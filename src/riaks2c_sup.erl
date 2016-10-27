@@ -40,13 +40,13 @@
 %% =============================================================================
 
 start_link() ->
-	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+	supervisor:start_link({local, ?MODULE}, ?MODULE, {}).
 
 %% =============================================================================
 %% Supervisor callbacks
 %% =============================================================================
 
-init([]) ->
-	Flags = #{},
-	Procs = [],
-	{ok, {Flags, Procs}}.
+init({}) ->
+  Flags = #{},
+  Procs = [],
+  {ok, {Flags, Procs}}.
