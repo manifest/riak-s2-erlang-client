@@ -11,6 +11,7 @@ Session.vim
 
 # Erlang
 deps
+logs
 ebin
 doc
 log
@@ -18,6 +19,11 @@ _rel
 relx
 erl_crash.dump
 .erlang.mk
-*.d
+*.beam
 *.plt
+*.d
+
+# Docker
+.docker.env*
+.docker.event*
 

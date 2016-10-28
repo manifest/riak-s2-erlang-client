@@ -9,6 +9,9 @@ DEPS = \
 dep_erlsom = git git://github.com/willemdj/erlsom.git v1.4.1
 dep_gun = git git://github.com/ninenines/gun.git 0414eede62946f995a5ab4879f9026548440199c
 
+TEST_DEPS = ct_helper
+dep_ct_helper = git git://github.com/ninenines/ct_helper.git master
+
 SHELL_DEPS = tddreloader
 SHELL_OPTS = \
 	-eval 'application:ensure_all_started($(PROJECT), permanent)' \
