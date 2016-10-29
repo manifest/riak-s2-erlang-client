@@ -87,6 +87,13 @@ RUN set -xe \
 ## Configuring Riak S2
 ## -----------------------------------------------------------------------------
 RUN set -xe \
+	&& echo "\
+		[\n\
+			{riak_cs, [\n\
+				{max_buckets_per_user, 1000000}\n\
+			]}\n\
+		].\n\
+	" > /etc/riak-cs/advanced.config \
 	&& perl -pi -e 's/(listener = )127\.0\.0\.1/${1}0.0.0.0/' /etc/riak-cs/riak-cs.conf \
 	&& perl -pi -e 's/(riak_host = )127\.0\.0\.1/${1}0.0.0.0/' /etc/riak-cs/riak-cs.conf \
 	&& perl -pi -e 's/(stanchion_host = )127\.0\.0\.1/${1}0.0.0.0/' /etc/riak-cs/riak-cs.conf
