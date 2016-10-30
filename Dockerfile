@@ -3,9 +3,11 @@ FROM ubuntu:16.04
 ARG RIAKKV_VERSION
 ARG RIAKCS_VERSION
 ARG STANCHION_VERSION
+ARG ULIMIT_FD
 ENV RIAKKV_VERSION=${RIAKKV_VERSION:-2.1.4}
 ENV RIAKCS_VERSION=${RIAKCS_VERSION:-2.1.1}
 ENV STANCHION_VERSION=${STANCHION_VERSION:-2.1.1}
+ENV ULIMIT_FD=${ULIMIT_FD:-262144}
 
 ## -----------------------------------------------------------------------------
 ## Installing dependencies
@@ -47,6 +49,7 @@ RUN set -xe \
 ## Configuring Riak KV
 ## -----------------------------------------------------------------------------
 RUN set -xe \
+	&& echo "ulimit -n ${ULIMIT_FD}" >> /etc/default/riak \
 	&& echo "\
 		[\n\
 			{eleveldb, [\n\
@@ -80,6 +83,7 @@ RUN set -xe \
 ## Configuring Stanchion
 ## -----------------------------------------------------------------------------
 RUN set -xe \
+	&& echo "ulimit -n ${ULIMIT_FD}" >> /etc/default/stanchion \
 	&& perl -pi -e 's/(listener = )127\.0\.0\.1/${1}0.0.0.0/' /etc/stanchion/stanchion.conf \
 	&& perl -pi -e 's/(riak_host = )127\.0\.0\.1/${1}0.0.0.0/' /etc/stanchion/stanchion.conf
 
@@ -87,6 +91,7 @@ RUN set -xe \
 ## Configuring Riak S2
 ## -----------------------------------------------------------------------------
 RUN set -xe \
+	&& echo "ulimit -n ${ULIMIT_FD}" >> /etc/default/riak-cs \
 	&& echo "\
 		[\n\
 			{riak_cs, [\n\

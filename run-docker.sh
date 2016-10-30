@@ -5,6 +5,7 @@ DOCKER_ENV_CONFIG='.docker.env.config'
 DOCKER_RUN_OPTIONS=${DOCKER_RUN_OPTIONS:-'-ti'}
 DOCKER_CONTAINER_COMMAND=${DOCKER_CONTAINER_COMMAND:-'/bin/bash'}
 DOCKER_CONTAINER_NAME='sandbox/riaks2c'
+ULIMIT_FD=262144
 
 function CREATE_USER() {
 	local EMAIL="${1}"
@@ -59,9 +60,10 @@ read -r DOCKER_RUN_COMMAND <<-EOF
 EOF
 
 DOCKER_BUILD_BEGIN
-docker build -t ${DOCKER_CONTAINER_NAME} .
+docker build --build-arg ULIMIT_FD=${ULIMIT_FD} -t ${DOCKER_CONTAINER_NAME} .
 docker run ${DOCKER_RUN_OPTIONS} \
 	-v $(pwd):${PROJECT_DIR} \
 	-p 8080:8080 \
+	--ulimit nofile=${ULIMIT_FD}:${ULIMIT_FD} \
 	${DOCKER_CONTAINER_NAME} \
 	/bin/bash -c "set -x && cd ${PROJECT_DIR} && ${DOCKER_RUN_COMMAND} && set +x && ${DOCKER_CONTAINER_COMMAND}"
