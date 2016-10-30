@@ -31,7 +31,8 @@
 	get/4,
 	get/5,
 	put/6,
-	put/7
+	put/7,
+	remove/4
 ]).
 
 %% =============================================================================
@@ -46,7 +47,7 @@ list(Pid, Bucket, Opts) ->
 	Method = <<"GET">>,
 	Path = <<$/>>,
 	Resource = [<<$/>>, Bucket, <<$/>>],
-	Date = cow_date:rfc7231(calendar:universal_time()),
+	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, []),
 	Token = riaks2c:access_token_v2(Id, Sign),
 	Host = [Bucket, <<$.>>, RootHost],
@@ -70,11 +71,11 @@ get(Pid, Bucket, Key, Headers0, Opts) ->
 	Method = <<"GET">>,
 	Path = [<<$/>>, Key],
 	Resource = [<<$/>>, Bucket, <<$/>>, Key],
-	Date = cow_date:rfc7231(calendar:universal_time()),
+	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, Headers0),
 	Token = riaks2c:access_token_v2(Id, Sign),
 	Host = [Bucket, <<$.>>, RootHost],
-	Headers1 = [{<<"date">>, Date}, {<<"host">>, Host}, {<<"authorization">>, Token}],
+	Headers1 = [{<<"date">>, Date}, {<<"host">>, Host}, {<<"authorization">>, Token} | Headers0],
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	Ref = gun:request(Pid, Method, Path, Headers1),
 	riaks2c:handle_response(Pid, Ref, Timeout, fun
@@ -96,7 +97,7 @@ put(Pid, Bucket, Key, Val, ContentType, Headers0, Opts) ->
 	Path = [<<$/>>, Key],
 	Resource = [<<$/>>, Bucket, <<$/>>, Key],
 	ContentMD5 = base64:encode(erlang:md5(Val)),
-	Date = cow_date:rfc7231(calendar:universal_time()),
+	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = riaks2c:signature_v2(Secret, Method, Resource, ContentMD5, ContentType, Date, Headers0),
 	Token = riaks2c:access_token_v2(Id, Sign),
 	Host = [Bucket, <<$.>>, RootHost],
@@ -113,4 +114,25 @@ put(Pid, Bucket, Key, Val, ContentType, Headers0, Opts) ->
 		(200, _Hs, _Xml) -> ok;
 		(404, _Hs, _Xml) -> riaks2c:handle_response_error_404(Bucket);
 		(_St, _Hs, Xml)  -> riaks2c:handle_response_error(Xml)
+	end).
+
+-spec remove(pid(), iodata(), iodata(), riaks2c:options()) -> iodata().
+remove(Pid, Bucket, Key, Opts) ->
+	#{id := Id,
+		secret := Secret,
+		host := RootHost} = Opts,
+	Method = <<"DELETE">>,
+	Path = [<<$/>>, Key],
+	Resource = [<<$/>>, Bucket, <<$/>>, Key],
+	Date = cow_date:rfc7231(erlang:universaltime()),
+	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, []),
+	Token = riaks2c:access_token_v2(Id, Sign),
+	Host = [Bucket, <<$.>>, RootHost],
+	Headers = [{<<"date">>, Date}, {<<"host">>, Host}, {<<"authorization">>, Token}],
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	Ref = gun:request(Pid, Method, Path, Headers),
+	riaks2c:handle_response(Pid, Ref, Timeout, fun
+		(204, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c:handle_response_error_404(Xml, Bucket, Key);
+		(_St, _Hs, Xml) -> riaks2c:handle_response_error(Xml)
 	end).
