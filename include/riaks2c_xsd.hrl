@@ -24,8 +24,9 @@
 -record('Error', {anyAttribs :: anyAttribs(),
 	'Code' :: binary(),
 	'Message' :: binary(),
-	'Resource' :: binary(),
-	'RequestId' :: binary()}).
+	'Resource' :: binary() | undefined,
+	'RequestId' :: binary() | undefined,
+	choice :: [any()] | undefined}).
 
 -type 'Error'() :: #'Error'{}.
 
