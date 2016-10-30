@@ -22,26 +22,11 @@
 %% IN THE SOFTWARE.
 %% ----------------------------------------------------------------------------
 
--module(main_SUITE).
+-module(bucket_SUITE).
+-include_lib("common_test/include/ct.hrl").
 -include_lib("riaks2c_xsd.hrl").
 
 -compile(export_all).
-
-%% Helpers
--import(ct_helper, [
-	config/2
-]).
--import(riaks2c_test, [
-	init_config/0,
-	gun_open/1,
-	gun_down/1
-]).
-
-%% Definitions
--define(BUCKET, <<"test-bucket">>).
--define(KEY, <<"test_file">>).
--define(VAL, <<"test_payload">>).
--define(CONTENT_TYPE, <<"application/octet-stream">>).
 
 %% =============================================================================
 %% Common Test callbacks
@@ -49,33 +34,33 @@
 
 all() ->
 	application:ensure_all_started(riaks2c),
-	ct_helper:all(?MODULE).
+	[{group, bucket}].
+
+groups() ->
+	[{bucket, [parallel], ct_helper:all(?MODULE)}].
 
 init_per_suite(Config) ->
-	init_config() ++ Config.
+	riaks2c_cth:init_config() ++ Config.
 
 %% =============================================================================
 %% Tests
 %% =============================================================================
 
+bucket_putremove_roundtrip(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = riaks2c_cth:make_bucket(),
+	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:remove(Pid, Bucket, Opts),
+	true.
+
 bucket_list(Config) ->
-	Pid = gun_open(Config),
-	Opts = config(user, Config),
-	#'ListAllMyBucketsResult'{} = riaks2c_bucket:list(Pid, Opts).
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = riaks2c_cth:make_bucket(),
+	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	Resp = riaks2c_bucket:list(Pid, Opts),
+	ok = riaks2c_bucket:remove(Pid, Bucket, Opts),
 
-bucket_put(Config) ->
-	Pid = gun_open(Config),
-	Opts = config(user, Config),
-	ok = riaks2c_bucket:put(Pid, ?BUCKET, Opts).
-
-object_list(Config) ->
-	Pid = gun_open(Config),
-	Opts = config(user, Config),
-	#'ListBucketResult'{} = riaks2c_object:list(Pid, ?BUCKET, Opts).
-
-object_putget_roundtrip(Config) ->
-	Pid = gun_open(Config),
-	Opts = config(user, Config),
-	ok = riaks2c_object:put(Pid, ?BUCKET, ?KEY, ?VAL, ?CONTENT_TYPE, Opts),
-	?VAL = riaks2c_object:get(Pid, ?BUCKET, ?KEY, Opts).
-
+	#'ListAllMyBucketsResult'{'Buckets' = #'ListAllMyBucketsList'{'Bucket' = L}} = Resp,
+	lists:any(fun(#'ListAllMyBucketsEntry'{'Name' = Lbucket}) -> Lbucket =:= Bucket end, L).

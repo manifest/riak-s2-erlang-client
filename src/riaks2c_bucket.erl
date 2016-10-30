@@ -29,7 +29,8 @@
 -export([
 	list/2,
 	put/3,
-	put/4
+	put/4,
+	remove/3
 ]).
 
 %% =============================================================================
@@ -42,7 +43,7 @@ list(Pid, Opts) ->
 		secret := Secret} = Opts,
 	Method = <<"GET">>,
 	Path = Resource = <<$/>>,
-	Date = cow_date:rfc7231(calendar:universal_time()),
+	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, []),
 	Token = riaks2c:access_token_v2(Id, Sign),
 	Headers = [{<<"date">>, Date}, {<<"authorization">>, Token}],
@@ -65,7 +66,7 @@ put(Pid, Bucket, Headers0, Opts) ->
 	Method = <<"PUT">>,
 	Path = <<$/>>,
 	Resource = [<<$/>>, Bucket, <<$/>>],
-	Date = cow_date:rfc7231(calendar:universal_time()),
+	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, Headers0),
 	Token = riaks2c:access_token_v2(Id, Sign),
 	Host = [Bucket, <<$.>>, RootHost],
@@ -75,4 +76,24 @@ put(Pid, Bucket, Headers0, Opts) ->
 	riaks2c:handle_response(Pid, Ref, Timeout, fun
 		(200, _Hs, _Xml) -> ok;
 		(_St, _Hs, Xml)  -> riaks2c:handle_response_error(Xml)
+	end).
+
+-spec remove(pid(), iodata(), riaks2c:options()) -> ok.
+remove(Pid, Bucket, Opts) ->
+	#{id := Id,
+		secret := Secret,
+		host := RootHost} = Opts,
+	Method = <<"DELETE">>,
+	Path = <<$/>>,
+	Resource = [<<$/>>, Bucket, <<$/>>],
+	Date = cow_date:rfc7231(erlang:universaltime()),
+	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, []),
+	Token = riaks2c:access_token_v2(Id, Sign),
+	Host = [Bucket, <<$.>>, RootHost],
+	Headers = [{<<"date">>, Date}, {<<"host">>, Host}, {<<"authorization">>, Token}],
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	Ref = gun:request(Pid, Method, Path, Headers),
+	riaks2c:handle_response(Pid, Ref, Timeout, fun
+		(204, _Hs, _No) -> ok;
+		(_St, _Hs, Xml) -> riaks2c:handle_response_error(Xml)
 	end).
