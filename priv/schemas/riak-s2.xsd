@@ -128,12 +128,14 @@
 		</xsd:simpleContent>
 	</xsd:complexType>
 
-	<xsd:complexType name="AccessControlPolicy">
-		<xsd:sequence>
-			<xsd:element name="Owner" type="tns:CanonicalUser"/>
-			<xsd:element name="AccessControlList" type="tns:AccessControlList"/>
-		</xsd:sequence>
-	</xsd:complexType>
+	<xsd:element name="AccessControlPolicy">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="Owner" type="tns:CanonicalUser"/>
+				<xsd:element name="AccessControlList" type="tns:AccessControlList"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
 
 	<xsd:complexType name="GetObjectResult">
 		<xsd:complexContent>

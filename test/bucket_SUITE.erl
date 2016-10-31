@@ -64,3 +64,32 @@ bucket_list(Config) ->
 
 	#'ListAllMyBucketsResult'{'Buckets' = #'ListAllMyBucketsList'{'Bucket' = L}} = Resp,
 	lists:any(fun(#'ListAllMyBucketsEntry'{'Name' = Lbucket}) -> Lbucket =:= Bucket end, L).
+
+bucket_acl_putremove_roundtrip(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = riaks2c_cth:make_bucket(),
+
+	#'ListAllMyBucketsResult'{'Owner' = Owner} = riaks2c_bucket:list(Pid, Opts),
+	ACL =
+		#'AccessControlPolicy'{
+			'Owner' = Owner,
+			'AccessControlList' =
+				#'AccessControlList'{
+					'Grant' =
+						[	#'Grant'{
+								'Grantee' = #'CanonicalUser'{'ID' = OwnerID} = Owner,
+								'Permission' = <<"FULL_CONTROL">> } ]}},
+	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:put_acl(Pid, Bucket, riaks2c_xsd:write(ACL), Opts),
+	Resp = riaks2c_bucket:acl(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:remove(Pid, Bucket, Opts),
+
+	#'AccessControlPolicy'{
+		'AccessControlList' =
+			#'AccessControlList'{
+				'Grant' =
+					[	#'Grant'{
+							'Grantee' = #'CanonicalUser'{'ID' = OwnerID},
+							'Permission' = <<"FULL_CONTROL">> } ]}} = Resp,
+	true.

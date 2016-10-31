@@ -27,10 +27,16 @@
 
 %% API
 -export([
+	%% main
 	list/2,
 	put/3,
 	put/4,
-	remove/3
+	remove/3,
+	%% acl
+	acl/3,
+	acl/4,
+	put_acl/4,
+	put_acl/5
 ]).
 
 %% =============================================================================
@@ -96,4 +102,53 @@ remove(Pid, Bucket, Opts) ->
 	riaks2c:handle_response(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(_St, _Hs, Xml) -> riaks2c:handle_response_error(Xml)
+	end).
+
+-spec acl(pid(), iodata(), riaks2c:options()) -> iodata().
+acl(Pid, Bucket, Opts) ->
+	acl(Pid, Bucket, [], Opts).
+
+-spec acl(pid(), iodata(), cow_http:headers(), riaks2c:options()) -> iodata().
+acl(Pid, Bucket, Headers0, Opts) ->
+	#{id := Id,
+		secret := Secret,
+		host := RootHost} = Opts,
+	Method = <<"GET">>,
+	Path = <<"/?acl">>,
+	Resource = [<<$/>>, Bucket, Path],
+	Date = cow_date:rfc7231(erlang:universaltime()),
+	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, Headers0),
+	Token = riaks2c:access_token_v2(Id, Sign),
+	Host = [Bucket, <<$.>>, RootHost],
+	Headers1 = [{<<"date">>, Date}, {<<"host">>, Host}, {<<"authorization">>, Token} | Headers0],
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	Ref = gun:request(Pid, Method, Path, Headers1),
+	riaks2c:handle_response(Pid, Ref, Timeout, fun
+		(200, _Hs, Xml)  -> riaks2c_xsd:scan(Xml);
+		(404, _Hs, _Xml) -> riaks2c:handle_response_error_404(Bucket);
+		(_St, _Hs, Xml)  -> riaks2c:handle_response_error(Xml)
+	end).
+
+-spec put_acl(pid(), iodata(), iodata(), riaks2c:options()) -> ok.
+put_acl(Pid, Bucket, ACL, Opts) ->
+	put_acl(Pid, Bucket, ACL, [], Opts).
+
+-spec put_acl(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:options()) -> ok.
+put_acl(Pid, Bucket, ACL, Headers0, Opts) ->
+	#{id := Id,
+		secret := Secret,
+		host := RootHost} = Opts,
+	Method = <<"PUT">>,
+	Resource = [<<$/>>, Bucket, Path = <<"/?acl">>],
+	Date = cow_date:rfc7231(erlang:universaltime()),
+	Sign = riaks2c:signature_v2(Secret, Method, Resource, Date, Headers0),
+	Token = riaks2c:access_token_v2(Id, Sign),
+	Host = [Bucket, <<$.>>, RootHost],
+	Headers1 = [{<<"date">>, Date}, {<<"host">>, Host}, {<<"authorization">>, Token} | Headers0],
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	Ref = gun:request(Pid, Method, Path, Headers1, ACL),
+	riaks2c:handle_response(Pid, Ref, Timeout, fun
+		(200, _Hs, _Xml) -> ok;
+		(404, _Hs, _Xml) -> riaks2c:handle_response_error_404(Bucket);
+		(_St, _Hs, Xml)  -> riaks2c:handle_response_error(Xml)
 	end).
