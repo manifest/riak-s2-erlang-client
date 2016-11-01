@@ -40,14 +40,16 @@ groups() ->
 	[{object, [parallel], ct_helper:all(?MODULE)}].
 
 init_per_suite(Config) ->
-	InitConfig = riaks2c_cth:init_config(),
-	Pid = riaks2c_cth:gun_open(InitConfig),
-	Opts = ?config(user, InitConfig),
+	riaks2c_cth:init_config() ++ Config.
+
+init_per_testcase(_Name, Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
-	[{bucket, Bucket} | Config] ++ InitConfig.
+	[{bucket, Bucket} | Config].
 
-end_per_suite(Config) ->
+end_per_testcase(_Name, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
@@ -57,13 +59,13 @@ end_per_suite(Config) ->
 %% Tests
 %% =============================================================================
 
-object_putremove_roundtrip(Config) ->
+object_createremove_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = riaks2c_cth:make_key(),
 	{Val, ContentType} = riaks2c_cth:make_content(),
-	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
+	ok = riaks2c_object:create(Pid, Bucket, Key, Val, ContentType, Opts),
 	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
 	true.
 
@@ -73,7 +75,7 @@ object_list(Config) ->
 	Bucket = ?config(bucket, Config),
 	Key = riaks2c_cth:make_key(),
 	{Val, ContentType} = riaks2c_cth:make_content(),
-	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
+	ok = riaks2c_object:create(Pid, Bucket, Key, Val, ContentType, Opts),
 	Resp = riaks2c_object:list(Pid, Bucket, Opts),
 	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
 

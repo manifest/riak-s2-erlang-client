@@ -31,9 +31,11 @@
 	signature_v2/7,
 	access_token_v2/2,
 	handle_response/4,
-	handle_response_error/1,
-	handle_response_error_404/1,
-	handle_response_error_404/3,
+	throw_response_error/1,
+	throw_response_error_404/1,
+	throw_response_error_404/3,
+	return_response_error_404/1,
+	return_response_error_404/3,
 	default_request_timeout/0
 ]).
 
@@ -90,20 +92,32 @@ handle_response(Pid, Ref, Timeout, Handle) ->
 		exit(timeout)
 	end.
 
--spec handle_response_error(iodata()) -> no_return().
-handle_response_error(Xml) ->
+-spec throw_response_error(iodata()) -> no_return().
+throw_response_error(Xml) ->
 	exit(riaks2c_xsd:scan(Xml)).
 
--spec handle_response_error_404(iodata()) -> no_return().
-handle_response_error_404(Bucket) ->
-	exit({bad_bucket, Bucket}).
+-spec throw_response_error_404(iodata()) -> no_return().
+throw_response_error_404(Bucket) ->
+	error({bad_bucket, Bucket}).
 
--spec handle_response_error_404(iodata(), iodata(), iodata()) -> no_return().
-handle_response_error_404(Xml, Bucket, Key) ->
+-spec throw_response_error_404(iodata(), iodata(), iodata()) -> no_return().
+throw_response_error_404(Xml, Bucket, Key) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
 		<<"NoSuchKey">>    -> error({bad_key, Bucket, Key});
 		<<"NoSuchBucket">> -> error({bad_bucket, Bucket})
+	end.
+
+-spec return_response_error_404(iodata()) -> {error, any()}.
+return_response_error_404(Bucket) ->
+	{error, {bad_bucket, Bucket}}.
+
+-spec return_response_error_404(iodata(), iodata(), iodata()) -> {error, any()}.
+return_response_error_404(Xml, Bucket, Key) ->
+	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"NoSuchKey">>    -> {error, {bad_key, Bucket, Key}};
+		<<"NoSuchBucket">> -> {error, {bad_bucket, Bucket}}
 	end.
 
 -spec default_request_timeout() -> non_neg_integer().
