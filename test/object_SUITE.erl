@@ -42,17 +42,36 @@ groups() ->
 init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
-init_per_testcase(_Name, Config) ->
+%% - Creating a bucket for all testcases
+%% - Creating an object for all testcases but 'object_createremove_roundtrip'
+init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
-	[{bucket, Bucket} | Config].
+	case Test of
+		object_createremove_roundtrip ->
+			[{bucket, Bucket} | Config];
+		_ ->
+			Key = riaks2c_cth:make_key(),
+			{Val, ContentType} = riaks2c_cth:make_content(),
+			ok = riaks2c_object:create(Pid, Bucket, Key, Val, ContentType, Opts),
+			[{bucket, Bucket}, {key, Key} | Config]
+	end.
 
-end_per_testcase(_Name, Config) ->
+%% - Removing the recently created bucket for all testcases
+%% - Removing the recently created object for all testcases but 'object_createremove_roundtrip'
+end_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
+	case Test of
+		object_createremove_roundtrip ->
+			ok;
+		_ ->
+			Key = ?config(key, Config),
+			ok = riaks2c_object:remove(Pid, Bucket, Key, Opts)
+	end,
 	ok = riaks2c_bucket:remove(Pid, Bucket, Opts).
 
 %% =============================================================================
@@ -73,11 +92,9 @@ object_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
-	Key = riaks2c_cth:make_key(),
-	{Val, ContentType} = riaks2c_cth:make_content(),
-	ok = riaks2c_object:create(Pid, Bucket, Key, Val, ContentType, Opts),
-	Resp = riaks2c_object:list(Pid, Bucket, Opts),
-	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
-
-	#'ListBucketResult'{'Contents' = L} = Resp,
-	lists:any(fun(#'ListEntry'{'Key' = Lkey}) -> Lkey =:= Key end, L).
+	Key = ?config(key, Config),
+	#'ListBucketResult'{'Contents' = L} = riaks2c_object:list(Pid, Bucket, Opts),
+	lists:any(
+		fun(#'ListEntry'{'Key' = Lkey}) ->
+			Lkey =:= Key
+		end, L).

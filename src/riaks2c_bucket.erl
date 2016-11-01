@@ -39,6 +39,11 @@
 	get_acl/4,
 	update_acl/4,
 	update_acl/5
+	%% policy
+	%request_get_policy/3,
+	%request_get_policy/4,
+	%get_policy/3,
+	%get_policy/4
 ]).
 
 %% =============================================================================
@@ -47,26 +52,12 @@
 
 -spec list(pid(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
 list(Pid, Opts) ->
-	#{id := Id,
-		secret := Secret} = Opts,
-	Sign =
-		riaks2c:signature_v2(
-			Secret,
-			Method = <<"GET">>,
-			Path = <<$/>>,
-			Date = cow_date:rfc7231(erlang:universaltime()),
-			[]),
-	Headers =
-		[	{<<"date">>, Date},
-			{<<"authorization">>, riaks2c:access_token_v2(Id, Sign)} ],
-	riaks2c:handle_response(
-		Pid,
-		gun:request(Pid, Method, Path, Headers),
-		maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
-		fun
-			(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
-			(_St, _Hs, Xml) -> riaks2c:throw_response_error(Xml)
-		end).
+	#{id := Id, secret := Secret} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	request_get_(Pid, Id, Secret, <<$/>>, [], Timeout, fun
+		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+		(_St, _Hs, Xml) -> riaks2c:throw_response_error(Xml)
+	end).
 
 -spec put(pid(), iodata(), riaks2c:options()) -> ok.
 put(Pid, Bucket, Opts) ->
@@ -81,13 +72,13 @@ put(Pid, Bucket, Headers0, Opts) ->
 		riaks2c:signature_v2(
 			Secret,
 			Method = <<"PUT">>,
-			Resource = [<<$/>>, Bucket, Path = <<$/>>],
+			[<<$/>>, Bucket, Path = <<$/>>],
 			Date = cow_date:rfc7231(erlang:universaltime()),
 			Headers0),
 	Headers1 =
 		[	{<<"date">>, Date},
-			{<<"host">>, Host = [Bucket, <<$.>>, RootHost]},
-			{<<"authorization">>, Token = riaks2c:access_token_v2(Id, Sign)}
+			{<<"host">>, [Bucket, <<$.>>, RootHost]},
+			{<<"authorization">>, riaks2c:access_token_v2(Id, Sign)}
 			| Headers0],
 	riaks2c:handle_response(
 		Pid,
@@ -107,7 +98,7 @@ remove(Pid, Bucket, Opts) ->
 		riaks2c:signature_v2(
 			Secret,
 			Method = <<"DELETE">>,
-			Resource = [<<$/>>, Bucket, Path = <<$/>>],
+			[<<$/>>, Bucket, Path = <<$/>>],
 			Date = cow_date:rfc7231(erlang:universaltime()),
 			[]),
 	Headers =
@@ -131,7 +122,9 @@ find_acl(Pid, Bucket, Opts) ->
 
 -spec find_acl(pid(), iodata(), cow_http:headers(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 find_acl(Pid, Bucket, Headers, Opts) ->
-	find_acl_(Pid, Bucket, Headers, Opts, fun
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	request_get_(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers, Timeout, fun
 		(200, _Hs, Xml)  -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, _Xml) -> riaks2c:return_response_error_404(Bucket);
 		(_St, _Hs, Xml)  -> riaks2c:throw_response_error(Xml)
@@ -143,7 +136,9 @@ get_acl(Pid, Bucket, Opts) ->
 
 -spec get_acl(pid(), iodata(), cow_http:headers(), riaks2c:options()) -> 'AccessControlPolicy'().
 get_acl(Pid, Bucket, Headers, Opts) ->
-	find_acl_(Pid, Bucket, Headers, Opts, fun
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	request_get_(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers, Timeout, fun
 		(200, _Hs, Xml)  -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, _Xml) -> riaks2c:throw_response_error_404(Bucket);
 		(_St, _Hs, Xml)  -> riaks2c:throw_response_error(Xml)
@@ -185,25 +180,33 @@ update_acl(Pid, Bucket, ACL, Headers0, Opts) ->
 %% Internal functions
 %% =============================================================================
 
--spec find_acl_(pid(), iodata(), cow_http:headers(), riaks2c:options(), riaks2c:response_handler()) -> 'AccessControlPolicy'() | {ok, 'AccessControlPolicy'()} | {error, any()}.
-find_acl_(Pid, Bucket, Headers0, Opts, Handle) ->
-	#{id := Id,
-		secret := Secret,
-		host := RootHost} = Opts,
+-spec request_get_(pid(), iodata(), iodata(), iodata(), cow_http:headers(), non_neg_integer(), riaks2c:response_handler()) -> any().%'AccessControlPolicy'() | {ok, 'AccessControlPolicy'()} | {error, any()}.
+request_get_(Pid, Id, Secret, Path, Headers0, Timeout, Handle) ->
 	Sign =
 		riaks2c:signature_v2(
 			Secret,
 			Method = <<"GET">>,
-			[<<$/>>, Bucket, Path = <<"/?acl">>],
+			Path,
 			Date = cow_date:rfc7231(erlang:universaltime()),
 			Headers0),
 	Headers1 =
 		[	{<<"date">>, Date},
-			{<<"host">>, [Bucket, <<$.>>, RootHost]},
 			{<<"authorization">>, riaks2c:access_token_v2(Id, Sign)}
 			| Headers0 ],
-	riaks2c:handle_response(
-		Pid,
-		gun:request(Pid, Method, Path, Headers1),
-		maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
-		Handle).
+	riaks2c:handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
+
+-spec request_get_(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), non_neg_integer(), riaks2c:response_handler()) -> any().%'AccessControlPolicy'() | {ok, 'AccessControlPolicy'()} | {error, any()}.
+request_get_(Pid, Id, Secret, Host, Path, Bucket, Headers0, Timeout, Handle) ->
+	Sign =
+		riaks2c:signature_v2(
+			Secret,
+			Method = <<"GET">>,
+			[<<$/>>, Bucket, Path],
+			Date = cow_date:rfc7231(erlang:universaltime()),
+			Headers0),
+	Headers1 =
+		[	{<<"date">>, Date},
+			{<<"host">>, [Bucket, <<$.>>, Host]},
+			{<<"authorization">>, riaks2c:access_token_v2(Id, Sign)}
+			| Headers0 ],
+	riaks2c:handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).

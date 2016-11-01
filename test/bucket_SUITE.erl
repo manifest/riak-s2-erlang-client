@@ -42,6 +42,23 @@ groups() ->
 init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
+%% Creating a bucket for all testcases but 'bucket_putremove_roundtrip'
+init_per_testcase(bucket_putremove_roundtrip, Config) -> Config;
+init_per_testcase(_Test, Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = riaks2c_cth:make_bucket(),
+	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	[{bucket, Bucket} | Config].
+
+%% Removing the recently created bucket for all testcases but 'bucket_putremove_roundtrip'
+end_per_testcase(bucket_putremove_roundtrip, _Config) -> ok;
+end_per_testcase(_Test, Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	ok = riaks2c_bucket:remove(Pid, Bucket, Opts).
+
 %% =============================================================================
 %% Tests
 %% =============================================================================
@@ -57,40 +74,39 @@ bucket_putremove_roundtrip(Config) ->
 bucket_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
-	Bucket = riaks2c_cth:make_bucket(),
-	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
-	Resp = riaks2c_bucket:list(Pid, Opts),
-	ok = riaks2c_bucket:remove(Pid, Bucket, Opts),
-
-	#'ListAllMyBucketsResult'{'Buckets' = #'ListAllMyBucketsList'{'Bucket' = L}} = Resp,
-	lists:any(fun(#'ListAllMyBucketsEntry'{'Name' = Lbucket}) -> Lbucket =:= Bucket end, L).
+	Bucket = ?config(bucket, Config),
+	#'ListAllMyBucketsResult'{
+		'Buckets' =
+			#'ListAllMyBucketsList'{
+				'Bucket' = L}} = riaks2c_bucket:list(Pid, Opts),
+	lists:any(
+		fun(#'ListAllMyBucketsEntry'{'Name' = Lbucket}) ->
+			Lbucket =:= Bucket
+		end, L).
 
 bucket_acl_putget_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
-	Bucket = riaks2c_cth:make_bucket(),
+	Bucket = ?config(bucket, Config),
 
-	#'ListAllMyBucketsResult'{'Owner' = Owner} = riaks2c_bucket:list(Pid, Opts),
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:list(Pid, Opts),
 	ACL =
 		#'AccessControlPolicy'{
-			'Owner' = Owner,
+			'Owner' = ExpectedOwner,
 			'AccessControlList' =
 				#'AccessControlList'{
 					'Grant' =
 						[	#'Grant'{
-								'Grantee' = #'CanonicalUser'{'ID' = OwnerID} = Owner,
-								'Permission' = <<"FULL_CONTROL">> } ]}},
+								'Grantee' = #'CanonicalUser'{'ID' = ExpectedOwnerId} = ExpectedOwner,
+								'Permission' = ExpectedPermision = <<"FULL_CONTROL">> } ]}},
 
-	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
 	ok = riaks2c_bucket:update_acl(Pid, Bucket, ACL, Opts),
-	Resp = riaks2c_bucket:get_acl(Pid, Bucket, Opts),
-	ok = riaks2c_bucket:remove(Pid, Bucket, Opts),
-
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
 				'Grant' =
 					[	#'Grant'{
-							'Grantee' = #'CanonicalUser'{'ID' = OwnerID},
-							'Permission' = <<"FULL_CONTROL">> } ]}} = Resp,
-	true.
+							'Grantee' = #'CanonicalUser'{'ID' = OwnerId},
+							'Permission' = Permission } ]}} = riaks2c_bucket:get_acl(Pid, Bucket, Opts),
+
+	(ExpectedOwnerId =:= OwnerId) andalso (ExpectedPermision =:= Permission).
