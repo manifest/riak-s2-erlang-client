@@ -110,3 +110,23 @@ bucket_acl_putget_roundtrip(Config) ->
 							'Permission' = Permission } ]}} = riaks2c_bucket:get_acl(Pid, Bucket, Opts),
 
 	(ExpectedOwnerId =:= OwnerId) andalso (ExpectedPermision =:= Permission).
+
+bucket_policy_putget_roundtrip(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+
+	Policy =
+		#{<<"Version">> => <<"2008-10-17">>,
+			<<"Statement">> =>
+				[	#{<<"Sid">> => <<"0xDEADBEEF">>,
+						<<"Effect">> => <<"Allow">>,
+						<<"Principal">> => <<"*">>,
+						<<"Action">> => [<<"s3:GetObjectAcl">>, <<"s3:GetObject">>],
+						<<"Resource">> => <<"arn:aws:s3:::", (iolist_to_binary(Bucket))/binary, "/*">>,
+						<<"Condition">> =>
+							#{<<"IpAddress">> =>
+								#{<<"aws:SourceIp">> => <<"192.0.72.1/24">>}}} ]},
+	ok = riaks2c_bucket:put_policy(Pid, Bucket, Policy, Opts),
+	Policy =:= riaks2c_bucket:get_policy(Pid, Bucket, Opts).
+

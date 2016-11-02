@@ -38,7 +38,14 @@
 	get_acl/3,
 	get_acl/4,
 	update_acl/4,
-	update_acl/5
+	update_acl/5,
+	%%
+	find_policy/3,
+	find_policy/4,
+	get_policy/3,
+	get_policy/4,
+	put_policy/4,
+	put_policy/5
 ]).
 
 %% =============================================================================
@@ -72,9 +79,9 @@ remove(Pid, Bucket, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, [], Timeout, fun
-		(204, _Hs, _No)  -> ok;
-		(404, _Hs, _Xml) -> riaks2c_http:return_response_error_404(Bucket);
-		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+		(204, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
 -spec find_acl(pid(), iodata(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
@@ -86,9 +93,9 @@ find_acl(Pid, Bucket, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers, Timeout, fun
-		(200, _Hs, Xml)  -> {ok, riaks2c_xsd:scan(Xml)};
-		(404, _Hs, _Xml) -> riaks2c_http:return_response_error_404(Bucket);
-		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
 -spec get_acl(pid(), iodata(), riaks2c:options()) -> 'AccessControlPolicy'().
@@ -100,9 +107,9 @@ get_acl(Pid, Bucket, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers, Timeout, fun
-		(200, _Hs, Xml)  -> riaks2c_xsd:scan(Xml);
-		(404, _Hs, _Xml) -> riaks2c_http:throw_response_error_404(Bucket);
-		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
 -spec update_acl(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
@@ -117,7 +124,54 @@ update_acl(Pid, Bucket, ACL, Headers, Opts) ->
 	ContentType = <<"application/xml">>,
 	Val = riaks2c_xsd:write(ACL),
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Val, ContentType, Headers, Timeout, fun
-		(200, _Hs, _Xml) -> ok;
-		(404, _Hs, _Xml) -> riaks2c_http:return_response_error_404(Bucket);
+		(200, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+-spec find_policy(pid(), iodata(), riaks2c:options()) -> {ok, map()} | {error, any()}.
+find_policy(Pid, Bucket, Opts) ->
+	find_policy(Pid, Bucket, [], Opts).
+
+-spec find_policy(pid(), iodata(), cow_http:headers(), riaks2c:options()) -> {ok, map()} | {error, any()}.
+find_policy(Pid, Bucket, Headers, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, Timeout, fun
+		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+-spec get_policy(pid(), iodata(), riaks2c:options()) -> map().
+get_policy(Pid, Bucket, Opts) ->
+	get_policy(Pid, Bucket, [], Opts).
+
+-spec get_policy(pid(), iodata(), cow_http:headers(), riaks2c:options()) -> map().
+get_policy(Pid, Bucket, Headers, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, Timeout, fun
+		(200, _Hs, Json) -> jsx:decode(Json, [return_maps]);
+		(404, _Hs, Xml)  -> riaks2c_http:throw_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+-spec put_policy(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+put_policy(Pid, Bucket, Policy, Opts) ->
+	put_policy(Pid, Bucket, Policy, [], Opts).
+
+%% TODO: Should return '204 No Content' status code on success
+%% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/put-bucket-policy
+%% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTpolicy.html
+-spec put_policy(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
+put_policy(Pid, Bucket, Policy, Headers, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	ContentType = <<"application/json">>,
+	Val = jsx:encode(Policy),
+	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentType, Headers, Timeout, fun
+		(200, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).

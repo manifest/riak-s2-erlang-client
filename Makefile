@@ -4,9 +4,11 @@ PROJECT_VERSION = 0.1.0
 
 DEPS = \
 	erlsom \
+	jsx \
 	gun
 
 dep_erlsom = git git://github.com/willemdj/erlsom.git 833fa057d199e0c9dc0232d560d2f742c57476b0
+dep_jsx = git git://github.com/talentdeficit/jsx.git v2.8.0
 dep_gun = git git://github.com/ninenines/gun.git 0414eede62946f995a5ab4879f9026548440199c
 
 TEST_DEPS = ct_helper

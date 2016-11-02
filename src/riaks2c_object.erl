@@ -46,9 +46,9 @@ list(Pid, Bucket, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, Bucket, [], Timeout, fun
-		(200, _Hs, Xml)  -> riaks2c_xsd:scan(Xml);
-		(404, _Hs, _Xml) -> riaks2c_http:throw_response_error_404(Bucket);
-		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
 -spec find(pid(), iodata(), iodata(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
@@ -88,9 +88,9 @@ create(Pid, Bucket, Key, Val, ContentType, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers, Timeout, fun
-		(200, _Hs, _Xml) -> ok;
-		(404, _Hs, _Xml) -> riaks2c_http:return_response_error_404(Bucket);
-		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+		(200, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
 -spec remove(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.

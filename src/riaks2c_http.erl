@@ -36,9 +36,9 @@
 	signature_v2/7,
 	access_token_v2/2,
 	throw_response_error/1,
-	throw_response_error_404/1,
+	throw_response_error_404/2,
 	throw_response_error_404/3,
-	return_response_error_404/1,
+	return_response_error_404/2,
 	return_response_error_404/3
 ]).
 
@@ -105,28 +105,38 @@ access_token_v2(Id, Sign) ->
 throw_response_error(Xml) ->
 	exit(riaks2c_xsd:scan(Xml)).
 
--spec throw_response_error_404(iodata()) -> no_return().
-throw_response_error_404(Bucket) ->
-	error({bad_bucket, Bucket}).
+-spec throw_response_error_404(iodata(), iodata()) -> no_return().
+throw_response_error_404(Xml, Bucket) ->
+	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"NoSuchBucket">>       -> error({bad_bucket, Bucket});
+		<<"NoSuchBucketPolicy">> -> error({bad_bucket_policy, Bucket})
+	end.
 
 -spec throw_response_error_404(iodata(), iodata(), iodata()) -> no_return().
 throw_response_error_404(Xml, Bucket, Key) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
-		<<"NoSuchKey">>    -> error({bad_key, Bucket, Key});
-		<<"NoSuchBucket">> -> error({bad_bucket, Bucket})
+		<<"NoSuchKey">>          -> error({bad_key, Bucket, Key});
+		<<"NoSuchBucket">>       -> error({bad_bucket, Bucket});
+		<<"NoSuchBucketPolicy">> -> error({bad_bucket_policy, Bucket})
 	end.
 
--spec return_response_error_404(iodata()) -> {error, any()}.
-return_response_error_404(Bucket) ->
-	{error, {bad_bucket, Bucket}}.
+-spec return_response_error_404(iodata(), iodata()) -> {error, any()}.
+return_response_error_404(Xml, Bucket) ->
+	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"NoSuchBucket">>       -> {error, {bad_bucket, Bucket}};
+		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, Bucket}}
+	end.
 
 -spec return_response_error_404(iodata(), iodata(), iodata()) -> {error, any()}.
 return_response_error_404(Xml, Bucket, Key) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
-		<<"NoSuchKey">>    -> {error, {bad_key, Bucket, Key}};
-		<<"NoSuchBucket">> -> {error, {bad_bucket, Bucket}}
+		<<"NoSuchKey">>          -> {error, {bad_key, Bucket, Key}};
+		<<"NoSuchBucket">>       -> {error, {bad_bucket, Bucket}};
+		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, Bucket}}
 	end.
 
 %% =============================================================================
