@@ -100,7 +100,7 @@ bucket_acl_putget_roundtrip(Config) ->
 								'Grantee' = #'CanonicalUser'{'ID' = ExpectedOwnerId} = ExpectedOwner,
 								'Permission' = ExpectedPermision = <<"FULL_CONTROL">> } ]}},
 
-	ok = riaks2c_bucket:update_acl(Pid, Bucket, ACL, Opts),
+	ok = riaks2c_bucket:put_acl(Pid, Bucket, ACL, Opts),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{

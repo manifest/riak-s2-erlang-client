@@ -37,8 +37,8 @@
 	find_acl/4,
 	get_acl/3,
 	get_acl/4,
-	update_acl/4,
-	update_acl/5,
+	put_acl/4,
+	put_acl/5,
 	%%
 	find_policy/3,
 	find_policy/4,
@@ -112,13 +112,13 @@ get_acl(Pid, Bucket, Headers, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec update_acl(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
-update_acl(Pid, Bucket, ACL, Opts) ->
-	update_acl(Pid, Bucket, ACL, [], Opts).
+-spec put_acl(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+put_acl(Pid, Bucket, ACL, Opts) ->
+	put_acl(Pid, Bucket, ACL, [], Opts).
 
 %% NOTE: change type of the ACL argument to 'AccessControlPolicy'() in the function spec
--spec update_acl(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
-update_acl(Pid, Bucket, ACL, Headers, Opts) ->
+-spec put_acl(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
+put_acl(Pid, Bucket, ACL, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	ContentType = <<"application/xml">>,
