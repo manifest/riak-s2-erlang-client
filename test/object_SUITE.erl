@@ -43,30 +43,30 @@ init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
 %% - Creating a bucket for all testcases
-%% - Creating an object for all testcases but 'object_createremove_roundtrip'
+%% - Creating an object for all testcases but 'object_putremove_roundtrip'
 init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
 	case Test of
-		object_createremove_roundtrip ->
+		object_putremove_roundtrip ->
 			[{bucket, Bucket} | Config];
 		_ ->
 			Key = riaks2c_cth:make_key(),
 			{Val, ContentType} = riaks2c_cth:make_content(),
-			ok = riaks2c_object:create(Pid, Bucket, Key, Val, ContentType, Opts),
+			ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
 			[{bucket, Bucket}, {key, Key} | Config]
 	end.
 
-%% - Removing the recently created bucket for all testcases
-%% - Removing the recently created object for all testcases but 'object_createremove_roundtrip'
+%% - Removing the recently putd bucket for all testcases
+%% - Removing the recently putd object for all testcases but 'object_putremove_roundtrip'
 end_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 	case Test of
-		object_createremove_roundtrip ->
+		object_putremove_roundtrip ->
 			ok;
 		_ ->
 			Key = ?config(key, Config),
@@ -78,13 +78,13 @@ end_per_testcase(Test, Config) ->
 %% Tests
 %% =============================================================================
 
-object_createremove_roundtrip(Config) ->
+object_putremove_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = riaks2c_cth:make_key(),
 	{Val, ContentType} = riaks2c_cth:make_content(),
-	ok = riaks2c_object:create(Pid, Bucket, Key, Val, ContentType, Opts),
+	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
 	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
 	true.
 

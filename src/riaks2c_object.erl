@@ -32,8 +32,8 @@
 	find/5,
 	get/4,
 	get/5,
-	create/6,
-	create/7,
+	put/6,
+	put/7,
 	remove/4
 ]).
 
@@ -79,12 +79,12 @@ get(Pid, Bucket, Key, Headers, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec create(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
-create(Pid, Bucket, Key, Val, ContentType, Opts) ->
-	create(Pid, Bucket, Key, Val, ContentType, [], Opts).
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Key, Val, ContentType, Opts) ->
+	put(Pid, Bucket, Key, Val, ContentType, [], Opts).
 
--spec create(pid(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
-create(Pid, Bucket, Key, Val, ContentType, Headers, Opts) ->
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Key, Val, ContentType, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers, Timeout, fun
