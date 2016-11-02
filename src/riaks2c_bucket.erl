@@ -117,7 +117,7 @@ get_acl(Pid, Bucket, Headers, Opts) ->
 put_acl(Pid, Bucket, ACL, Opts) ->
 	put_acl(Pid, Bucket, ACL, [], Opts).
 
-%% NOTE: change type of the ACL argument to 'AccessControlPolicy'() in the function spec
+%% TODO: change type of the ACL argument to 'AccessControlPolicy'() in the function spec
 -spec put_acl(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
 put_acl(Pid, Bucket, ACL, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
@@ -162,7 +162,7 @@ get_policy(Pid, Bucket, Headers, Opts) ->
 put_policy(Pid, Bucket, Policy, Opts) ->
 	put_policy(Pid, Bucket, Policy, [], Opts).
 
-%% FIXME: 'PUT Bucket Policy' request should return '204 No Content' status code on success
+%% FIXME: 'PUT Bucket Policy' request should return '204 No Content' status code on success.
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/put-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTpolicy.html
 -spec put_policy(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
@@ -177,8 +177,8 @@ put_policy(Pid, Bucket, Policy, Headers, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
-%% FIXME: 'DELETE Bucket Policy' request should return '204 No Content' status code on success
-%% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/delete-bucket-policy/
+%% FIXME: 'DELETE Bucket Policy' request should return '204 No Content' status code on success.
+%% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/delete-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketDELETEpolicy.html
 -spec remove_policy(pid(), iodata(), riaks2c:options()) -> ok | {error, any()}.
 remove_policy(Pid, Bucket, Opts) ->

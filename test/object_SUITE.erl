@@ -43,14 +43,14 @@ init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
 %% - Creating a bucket for all testcases
-%% - Creating an object for all testcases but 'object_putremove_roundtrip'
+%% - Creating an object for all testcases but 'object_list'
 init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
 	case Test of
-		object_putremove_roundtrip ->
+		object_list ->
 			[{bucket, Bucket} | Config];
 		_ ->
 			Key = riaks2c_cth:make_key(),
@@ -59,14 +59,14 @@ init_per_testcase(Test, Config) ->
 			[{bucket, Bucket}, {key, Key} | Config]
 	end.
 
-%% - Removing the recently putd bucket for all testcases
-%% - Removing the recently putd object for all testcases but 'object_putremove_roundtrip'
+%% - Removing the recently created bucket for all testcases
+%% - Removing the recently created object for all testcases but 'object_list'
 end_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 	case Test of
-		object_putremove_roundtrip ->
+		object_list ->
 			ok;
 		_ ->
 			Key = ?config(key, Config),
@@ -78,23 +78,25 @@ end_per_testcase(Test, Config) ->
 %% Tests
 %% =============================================================================
 
-object_putremove_roundtrip(Config) ->
-	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
-	Bucket = ?config(bucket, Config),
-	Key = riaks2c_cth:make_key(),
-	{Val, ContentType} = riaks2c_cth:make_content(),
-	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
-	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
-	true.
-
 object_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
-	Key = ?config(key, Config),
-	#'ListBucketResult'{'Contents' = L} = riaks2c_object:list(Pid, Bucket, Opts),
-	lists:any(
-		fun(#'ListEntry'{'Key' = Lkey}) ->
-			Lkey =:= Key
-		end, L).
+	Key = riaks2c_cth:make_key(),
+	ExpectKey = iolist_to_binary(Key),
+	{Val, ContentType} = riaks2c_cth:make_content(),
+	IsObjectExist =
+		fun() ->
+			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:list(Pid, Bucket, Opts),
+			case Objects of
+				undefined -> false;
+				_         -> lists:any(fun(#'ListEntry'{'Key' = Kval}) -> Kval =:= ExpectKey end, Objects)
+			end
+		end,
+
+	false = IsObjectExist(),
+	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
+	true = IsObjectExist(),
+	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
+	false = IsObjectExist(),
+	true.
