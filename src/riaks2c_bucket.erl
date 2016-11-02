@@ -45,7 +45,8 @@
 	get_policy/3,
 	get_policy/4,
 	put_policy/4,
-	put_policy/5
+	put_policy/5,
+	remove_policy/3
 ]).
 
 %% =============================================================================
@@ -161,7 +162,7 @@ get_policy(Pid, Bucket, Headers, Opts) ->
 put_policy(Pid, Bucket, Policy, Opts) ->
 	put_policy(Pid, Bucket, Policy, [], Opts).
 
-%% TODO: Should return '204 No Content' status code on success
+%% FIXME: 'PUT Bucket Policy' request should return '204 No Content' status code on success
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/put-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTpolicy.html
 -spec put_policy(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
@@ -171,6 +172,19 @@ put_policy(Pid, Bucket, Policy, Headers, Opts) ->
 	ContentType = <<"application/json">>,
 	Val = jsx:encode(Policy),
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentType, Headers, Timeout, fun
+		(200, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+%% FIXME: 'DELETE Bucket Policy' request should return '204 No Content' status code on success
+%% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/delete-bucket-policy/
+%% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketDELETEpolicy.html
+-spec remove_policy(pid(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+remove_policy(Pid, Bucket, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
+	riaks2c_http:delete(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, [], Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)

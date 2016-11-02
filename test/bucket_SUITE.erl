@@ -111,11 +111,10 @@ bucket_acl_putget_roundtrip(Config) ->
 
 	(ExpectedOwnerId =:= OwnerId) andalso (ExpectedPermision =:= Permission).
 
-bucket_policy_putget_roundtrip(Config) ->
+bucket_policy_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
-
 	Policy =
 		#{<<"Version">> => <<"2008-10-17">>,
 			<<"Statement">> =>
@@ -127,6 +126,11 @@ bucket_policy_putget_roundtrip(Config) ->
 						<<"Condition">> =>
 							#{<<"IpAddress">> =>
 								#{<<"aws:SourceIp">> => <<"192.0.72.1/24">>}}} ]},
+
+	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket:find_policy(Pid, Bucket, Opts),
 	ok = riaks2c_bucket:put_policy(Pid, Bucket, Policy, Opts),
-	Policy =:= riaks2c_bucket:get_policy(Pid, Bucket, Opts).
+	Policy = riaks2c_bucket:get_policy(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:remove_policy(Pid, Bucket, Opts),
+	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket:find_policy(Pid, Bucket, Opts),
+	true.
 
