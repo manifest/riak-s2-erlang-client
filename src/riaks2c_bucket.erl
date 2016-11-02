@@ -158,14 +158,14 @@ get_policy(Pid, Bucket, Headers, Opts) ->
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put_policy(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+-spec put_policy(pid(), iodata(), map(), riaks2c:options()) -> ok | {error, any()}.
 put_policy(Pid, Bucket, Policy, Opts) ->
 	put_policy(Pid, Bucket, Policy, [], Opts).
 
 %% FIXME: 'PUT Bucket Policy' request should return '204 No Content' status code on success.
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/put-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTpolicy.html
--spec put_policy(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
+-spec put_policy(pid(), iodata(), map(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
 put_policy(Pid, Bucket, Policy, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),
