@@ -105,12 +105,12 @@ bucket_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_bucket:find_acl(Pid, Bucket, #{}, Opts),
-	ok = riaks2c_bucket:put_acl(Pid, Bucket, ACL, #{}, Opts),
+	{ok, _} = riaks2c_bucket_acl:find(Pid, Bucket, #{}, Opts),
+	ok = riaks2c_bucket_acl:put(Pid, Bucket, ACL, #{}, Opts),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket:get_acl(Pid, Bucket, #{}, Opts),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:get(Pid, Bucket, #{}, Opts),
 
 	true.
 
@@ -130,10 +130,10 @@ bucket_policy_roundtrip(Config) ->
 							#{<<"IpAddress">> =>
 								#{<<"aws:SourceIp">> => <<"192.0.72.1/24">>}}} ]},
 
-	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket:find_policy(Pid, Bucket, #{}, Opts),
-	ok = riaks2c_bucket:put_policy(Pid, Bucket, Policy, #{}, Opts),
-	Policy = riaks2c_bucket:get_policy(Pid, Bucket, #{}, Opts),
-	ok = riaks2c_bucket:remove_policy(Pid, Bucket, #{}, Opts),
-	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket:find_policy(Pid, Bucket, #{}, Opts),
+	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket_policy:find(Pid, Bucket, #{}, Opts),
+	ok = riaks2c_bucket_policy:put(Pid, Bucket, Policy, #{}, Opts),
+	Policy = riaks2c_bucket_policy:get(Pid, Bucket, #{}, Opts),
+	ok = riaks2c_bucket_policy:remove(Pid, Bucket, #{}, Opts),
+	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket_policy:find(Pid, Bucket, #{}, Opts),
 	true.
 

@@ -132,11 +132,11 @@ object_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_object:find_acl(Pid, Bucket, Key, #{}, Opts),
-	ok = riaks2c_object:put_acl(Pid, Bucket, Key, ACL, #{}, Opts),
+	{ok, _} = riaks2c_object_acl:find(Pid, Bucket, Key, #{}, Opts),
+	ok = riaks2c_object_acl:put(Pid, Bucket, Key, ACL, #{}, Opts),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object:get_acl(Pid, Bucket, Key, #{}, Opts),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:get(Pid, Bucket, Key, #{}, Opts),
 
 	true.
