@@ -59,7 +59,8 @@ find(Pid, Bucket, Key, ReqOpts, Opts) ->
 -spec find(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
 find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
+	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
+	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Bin) -> Bin;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket, Key);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
@@ -72,7 +73,8 @@ get(Pid, Bucket, Key, ReqOpts, Opts) ->
 -spec get(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> iodata().
 get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
+	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
+	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Bin) -> Bin;
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket, Key);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)

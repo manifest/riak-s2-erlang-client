@@ -27,6 +27,8 @@
 
 %% API
 -export([
+	head/7,
+	head/9,
 	get/7,
 	get/9,
 	put/9,
@@ -55,15 +57,21 @@
 %% API
 %% =============================================================================
 
+-spec head(pid(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+head(Pid, Id, Secret, Path, Headers0, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"HEAD">>, Path, Headers0, Opts, Handle).
+
+-spec head(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+head(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"HEAD">>, Host, Path, Bucket, Headers0, Opts, Handle).
+
 -spec get(pid(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
 get(Pid, Id, Secret, Path, Headers0, Opts, Handle) ->
-	Method = case maps:get(return_body, Opts, true) of true -> <<"GET">>; _ -> <<"HEAD">> end,
-	request(Pid, Id, Secret, Method, Path, Headers0, Opts, Handle).
+	request(Pid, Id, Secret, <<"GET">>, Path, Headers0, Opts, Handle).
 
 -spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
 get(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
-	Method = case maps:get(return_body, Opts, true) of true -> <<"GET">>; _ -> <<"HEAD">> end,
-	request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle).
+	request(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers0, Opts, Handle).
 
 -spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
 put(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
