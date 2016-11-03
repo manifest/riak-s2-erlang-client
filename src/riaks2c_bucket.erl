@@ -113,12 +113,11 @@ get_acl(Pid, Bucket, Headers, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put_acl(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+-spec put_acl(pid(), iodata(), 'AccessControlPolicy'(), riaks2c:options()) -> ok | {error, any()}.
 put_acl(Pid, Bucket, ACL, Opts) ->
 	put_acl(Pid, Bucket, ACL, [], Opts).
 
-%% TODO: change type of the ACL argument to 'AccessControlPolicy'() in the function spec
--spec put_acl(pid(), iodata(), any(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
+-spec put_acl(pid(), iodata(), 'AccessControlPolicy'(), cow_http:headers(), riaks2c:options()) -> ok | {error, any()}.
 put_acl(Pid, Bucket, ACL, Headers, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Timeout = maps:get(request_timeout, Opts, riaks2c:default_request_timeout()),

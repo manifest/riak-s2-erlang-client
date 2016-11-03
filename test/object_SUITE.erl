@@ -100,3 +100,30 @@ object_list(Config) ->
 	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
 	false = IsObjectExist(),
 	true.
+
+object_acl_roundtrip(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = ?config(key, Config),
+
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:list(Pid, Opts),
+	ExpectedPermission = <<"READ_ACP">>,
+	ACL =
+		#'AccessControlPolicy'{
+			'Owner' = ExpectedOwner,
+			'AccessControlList' =
+				#'AccessControlList'{
+					'Grant' =
+						[	#'Grant'{
+								'Grantee' = ExpectedOwner,
+								'Permission' = ExpectedPermission } ]}},
+
+	{ok, _} = riaks2c_object:find_acl(Pid, Bucket, Key, Opts),
+	ok = riaks2c_object:put_acl(Pid, Bucket, Key, ACL, Opts),
+	#'AccessControlPolicy'{
+		'AccessControlList' =
+			#'AccessControlList'{
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object:get_acl(Pid, Bucket, Key, Opts),
+
+	true.
