@@ -23,22 +23,8 @@
 %% ----------------------------------------------------------------------------
 
 -module(riaks2c).
--include_lib("riaks2c_xsd.hrl").
-
-%% API
--export([
-	default_request_timeout/0
-]).
 
 %% Types
 -type options() :: #{id => iodata(), secret => iodata(), host => iodata()}.
 
 -export_type([options/0]).
-
-%% =============================================================================
-%% API
-%% =============================================================================
-
--spec default_request_timeout() -> non_neg_integer().
-default_request_timeout() ->
-	5000.

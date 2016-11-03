@@ -42,29 +42,36 @@
 	return_response_error_404/3
 ]).
 
+%% Definitions
+-define(DEFAULT_REQUEST_TIMEOUT, 5000).
+
 %% Types
+-type request_options()  :: map().
 -type response_handler() :: fun((100..999, cow_http:headers(), iodata()) -> iodata()).
 
--export_type([response_handler/0]).
+-export_type([request_options/0, response_handler/0]).
 
 %% =============================================================================
 %% API
 %% =============================================================================
 
--spec get(pid(), iodata(), iodata(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-get(Pid, Id, Secret, Path, Headers0, Timeout, Handle) ->
-	request_(Pid, Id, Secret, <<"GET">>, Path, Headers0, Timeout, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+get(Pid, Id, Secret, Path, Headers0, Opts, Handle) ->
+	Method = case maps:get(return_body, Opts, true) of true -> <<"GET">>; _ -> <<"HEAD">> end,
+	request(Pid, Id, Secret, Method, Path, Headers0, Opts, Handle).
 
--spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-get(Pid, Id, Secret, Host, Path, Bucket, Headers0, Timeout, Handle) ->
-	request_(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers0, Timeout, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+get(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
+	Method = case maps:get(return_body, Opts, true) of true -> <<"GET">>; _ -> <<"HEAD">> end,
+	request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle).
 
--spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-put(Pid, Id, Secret, Host, Path, Bucket, Headers, Timeout, Handle) ->
-	request_(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers, Timeout, Handle).
+-spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+put(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers, Opts, Handle).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Timeout, Handle) ->
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Opts, Handle) ->
+	Timeout = maps:get(requesttimeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	ContentMD5 = base64:encode(erlang:md5(Val)),
@@ -78,9 +85,9 @@ put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Timeout, Ha
 			| Headers0 ],
 	handle_response(Pid, gun:request(Pid, Method, Path, Headers1, Val), Timeout, Handle).
 
--spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-delete(Pid, Id, Secret, Host, Path, Bucket, Headers0, Timeout, Handle) ->
-	request_(Pid, Id, Secret, <<"DELETE">>, Host, Path, Bucket, Headers0, Timeout, Handle).
+-spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+delete(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"DELETE">>, Host, Path, Bucket, Headers0, Opts, Handle).
 
 -spec signature_v2(iodata(), iodata(), iodata(), iodata(), cow_http:headers()) -> iodata().
 signature_v2(Secret, Method, Resource, Date, Headers) ->
@@ -106,6 +113,8 @@ throw_response_error(Xml) ->
 	exit(riaks2c_xsd:scan(Xml)).
 
 -spec throw_response_error_404(iodata(), iodata()) -> no_return().
+throw_response_error_404(<<>>, Bucket) ->
+	error({bad_bucket, Bucket});
 throw_response_error_404(Xml, Bucket) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -114,6 +123,8 @@ throw_response_error_404(Xml, Bucket) ->
 	end.
 
 -spec throw_response_error_404(iodata(), iodata(), iodata()) -> no_return().
+throw_response_error_404(<<>>, Bucket, Key) ->
+	error({bad_key, Bucket, Key});
 throw_response_error_404(Xml, Bucket, Key) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -123,6 +134,8 @@ throw_response_error_404(Xml, Bucket, Key) ->
 	end.
 
 -spec return_response_error_404(iodata(), iodata()) -> {error, any()}.
+return_response_error_404(<<>>, Bucket) ->
+	{error, {bad_bucket, Bucket}};
 return_response_error_404(Xml, Bucket) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -131,6 +144,8 @@ return_response_error_404(Xml, Bucket) ->
 	end.
 
 -spec return_response_error_404(iodata(), iodata(), iodata()) -> {error, any()}.
+return_response_error_404(<<>>, Bucket, Key) ->
+	{error, {bad_key, Bucket, Key}};
 return_response_error_404(Xml, Bucket, Key) ->
 	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -143,8 +158,9 @@ return_response_error_404(Xml, Bucket, Key) ->
 %% Internal functions
 %% =============================================================================
 
--spec request_(pid(), iodata(), iodata(), binary(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-request_(Pid, Id, Secret, Method, Path, Headers0, Timeout, Handle) ->
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+request(Pid, Id, Secret, Method, Path, Headers0, Opts, Handle) ->
+	Timeout = maps:get(requesttimeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, Path, Date, Headers0),
 	Headers1 =
@@ -153,8 +169,9 @@ request_(Pid, Id, Secret, Method, Path, Headers0, Timeout, Handle) ->
 			| Headers0 ],
 	handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
 
--spec request_(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), cow_http:headers(), non_neg_integer(), response_handler()) -> any().
-request_(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Timeout, Handle) ->
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
+	Timeout = maps:get(requesttimeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, Headers0),
 	Headers1 =

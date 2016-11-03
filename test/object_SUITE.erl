@@ -48,14 +48,14 @@ init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
-	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:put(Pid, Bucket, #{}, Opts),
 	case Test of
 		object_list ->
 			[{bucket, Bucket} | Config];
 		_ ->
 			Key = riaks2c_cth:make_key(),
 			{Val, ContentType} = riaks2c_cth:make_content(),
-			ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
+			ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, #{}, Opts),
 			[{bucket, Bucket}, {key, Key} | Config]
 	end.
 
@@ -70,9 +70,9 @@ end_per_testcase(Test, Config) ->
 			ok;
 		_ ->
 			Key = ?config(key, Config),
-			ok = riaks2c_object:remove(Pid, Bucket, Key, Opts)
+			ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts)
 	end,
-	ok = riaks2c_bucket:remove(Pid, Bucket, Opts).
+	ok = riaks2c_bucket:remove(Pid, Bucket, #{}, Opts).
 
 %% =============================================================================
 %% Tests
@@ -87,7 +87,7 @@ object_list(Config) ->
 	{Val, ContentType} = riaks2c_cth:make_content(),
 	IsObjectExist =
 		fun() ->
-			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:list(Pid, Bucket, Opts),
+			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:list(Pid, Bucket, #{}, Opts),
 			case Objects of
 				undefined -> false;
 				_         -> lists:any(fun(#'ListEntry'{'Key' = Kval}) -> Kval =:= ExpectKey end, Objects)
@@ -95,10 +95,23 @@ object_list(Config) ->
 		end,
 
 	false = IsObjectExist(),
-	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, Opts),
+	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, #{}, Opts),
 	true = IsObjectExist(),
-	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
+	ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts),
 	false = IsObjectExist(),
+	true.
+
+object_copy(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	SourceKey = ?config(key, Config),
+	DestKey = riaks2c_cth:make_key(),
+
+	{error, {bad_key, Bucket, DestKey}} = riaks2c_object:find(Pid, Bucket, DestKey, #{return_body => false}, Opts),
+	ok = riaks2c_object:copy(Pid, Bucket, DestKey, Bucket, SourceKey, #{}, Opts),
+	_ = riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts),
+	ok = riaks2c_object:remove(Pid, Bucket, DestKey, #{}, Opts),
 	true.
 
 object_acl_roundtrip(Config) ->
@@ -107,7 +120,7 @@ object_acl_roundtrip(Config) ->
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
-	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:list(Pid, Opts),
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:list(Pid, #{}, Opts),
 	ExpectedPermission = <<"READ_ACP">>,
 	ACL =
 		#'AccessControlPolicy'{
@@ -119,11 +132,11 @@ object_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_object:find_acl(Pid, Bucket, Key, Opts),
-	ok = riaks2c_object:put_acl(Pid, Bucket, Key, ACL, Opts),
+	{ok, _} = riaks2c_object:find_acl(Pid, Bucket, Key, #{}, Opts),
+	ok = riaks2c_object:put_acl(Pid, Bucket, Key, ACL, #{}, Opts),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object:get_acl(Pid, Bucket, Key, Opts),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object:get_acl(Pid, Bucket, Key, #{}, Opts),
 
 	true.
