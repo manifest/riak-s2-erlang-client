@@ -219,7 +219,9 @@ handle_response(Pid, Ref, Timeout, Handle) ->
 			demonitor(Mref, [flush]),
 			exit(Reason);
 		{'DOWN', Mref, process, Pid, Reason} ->
-			exit(Reason)
+			exit(Reason);
+		_ ->
+			handle_response(Pid, Ref, Timeout, Handle)
 	after Timeout ->
 		demonitor(Mref, [flush]),
 		exit(timeout)
@@ -239,7 +241,9 @@ await_data(Pid, Ref, Timeout, Mref, Acc) ->
 			demonitor(Mref, [flush]),
 			exit(Reason);
 		{'DOWN', Mref, process, Pid, Reason} ->
-			exit(Reason)
+			exit(Reason);
+		_ ->
+			await_data(Pid, Ref, Timeout, Mref, Acc)
 	after Timeout ->
 		demonitor(Mref, [flush]),
 		exit(timeout)
