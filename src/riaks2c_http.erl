@@ -31,6 +31,7 @@
 	head/9,
 	get/7,
 	get/9,
+	get/10,
 	put/9,
 	put/11,
 	delete/9,
@@ -48,38 +49,44 @@
 -define(DEFAULT_REQUEST_TIMEOUT, 5000).
 
 %% Types
+-type qs()               :: [{binary(), binary() | true}].
+-type headers()          :: headers().
 -type request_options()  :: map().
--type response_handler() :: fun((100..999, cow_http:headers(), iodata()) -> iodata()).
+-type response_handler() :: fun((100..999, headers(), iodata()) -> iodata()).
 
--export_type([request_options/0, response_handler/0]).
+-export_type([qs/0, headers/0, request_options/0, response_handler/0]).
 
 %% =============================================================================
 %% API
 %% =============================================================================
 
--spec head(pid(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
-head(Pid, Id, Secret, Path, Headers0, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"HEAD">>, Path, Headers0, Opts, Handle).
+-spec head(pid(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
+head(Pid, Id, Secret, Path, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"HEAD">>, Path, Headers, Opts, Handle).
 
--spec head(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
-head(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"HEAD">>, Host, Path, Bucket, Headers0, Opts, Handle).
+-spec head(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
+head(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"HEAD">>, Host, Path, Bucket, Headers, Opts, Handle).
 
--spec get(pid(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
-get(Pid, Id, Secret, Path, Headers0, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"GET">>, Path, Headers0, Opts, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
+get(Pid, Id, Secret, Path, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"GET">>, Path, Headers, Opts, Handle).
 
--spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
-get(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers0, Opts, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
+get(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers, Opts, Handle).
 
--spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+-spec get(pid(), iodata(), iodata(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
+get(Pid, Id, Secret, Host, Path, Qs, Bucket, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"GET">>, Host, Path, Qs, Bucket, Headers, Opts, Handle).
+
+-spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), headers(), request_options(), response_handler()) -> any().
 put(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
 	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers, Opts, Handle).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), headers(), request_options(), response_handler()) -> any().
 put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Opts, Handle) ->
-	Timeout = maps:get(requesttimeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	ContentMD5 = base64:encode(erlang:md5(Val)),
@@ -93,15 +100,15 @@ put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Opts, Handl
 			| Headers0 ],
 	handle_response(Pid, gun:request(Pid, Method, Path, Headers1, Val), Timeout, Handle).
 
--spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
-delete(Pid, Id, Secret, Host, Path, Bucket, Headers0, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"DELETE">>, Host, Path, Bucket, Headers0, Opts, Handle).
+-spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
+delete(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"DELETE">>, Host, Path, Bucket, Headers, Opts, Handle).
 
--spec signature_v2(iodata(), iodata(), iodata(), iodata(), cow_http:headers()) -> iodata().
+-spec signature_v2(iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
 signature_v2(Secret, Method, Resource, Date, Headers) ->
 	signature_v2(Secret, Method, Resource, <<>>, <<>>, Date, Headers).
 
--spec signature_v2(iodata(), iodata(), iodata(), iodata(), iodata(), iodata(), cow_http:headers()) -> iodata().
+-spec signature_v2(iodata(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
 signature_v2(Secret, Method, Resource, ContentMD5, ContentType, Date, Headers) ->
 	Input =
 		[	Method, <<$\n>>,
@@ -166,9 +173,9 @@ return_response_error_404(Xml, Bucket, Key) ->
 %% Internal functions
 %% =============================================================================
 
--spec request(pid(), iodata(), iodata(), binary(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), headers(), request_options(), response_handler()) -> any().
 request(Pid, Id, Secret, Method, Path, Headers0, Opts, Handle) ->
-	Timeout = maps:get(requesttimeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, Path, Date, Headers0),
 	Headers1 =
@@ -177,9 +184,9 @@ request(Pid, Id, Secret, Method, Path, Headers0, Opts, Handle) ->
 			| Headers0 ],
 	handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
 
--spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), cow_http:headers(), request_options(), response_handler()) -> any().
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
 request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
-	Timeout = maps:get(requesttimeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, Headers0),
 	Headers1 =
@@ -188,6 +195,20 @@ request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
 	handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
+
+%% This function can't be used w/ subresources (?acl, ?policy, etc).
+%% Query String isn't used for signature calculation.
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
+request(Pid, Id, Secret, Method, Host, Path, Qs, Bucket, Headers0, Opts, Handle) ->
+	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+	Date = cow_date:rfc7231(erlang:universaltime()),
+	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, Headers0),
+	Headers1 =
+		[	{<<"date">>, Date},
+			{<<"host">>, [Bucket, <<$.>>, Host]},
+			{<<"authorization">>, access_token_v2(Id, Sign)}
+			| Headers0 ],
+	handle_response(Pid, gun:request(Pid, Method, [Path, <<$?>>, cow_qs:qs(Qs)], Headers1), Timeout, Handle).
 
 -spec amz_headers(list()) -> list().
 amz_headers(Input) ->

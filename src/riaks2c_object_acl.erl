@@ -39,11 +39,11 @@
 %% API
 %% =============================================================================
 
--spec find(pid(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+-spec find(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 find(Pid, Bucket, Key, ReqOpts, Opts) ->
 	find(Pid, Bucket, Key, [], ReqOpts, Opts).
 
--spec find(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+-spec find(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Headers, ReqOpts, fun
@@ -52,11 +52,11 @@ find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec get(pid(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
+-spec get(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
 get(Pid, Bucket, Key, ReqOpts, Opts) ->
 	get(Pid, Bucket, Key, [], ReqOpts, Opts).
 
--spec get(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
+-spec get(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
 get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Headers, ReqOpts, fun
@@ -65,11 +65,11 @@ get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Key, ACL, ReqOpts, Opts) ->
 	put(Pid, Bucket, Key, ACL, [], ReqOpts, Opts).
 
--spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Key, ACL, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	ContentType = <<"application/xml">>,

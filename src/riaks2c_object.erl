@@ -43,20 +43,20 @@
 %% API
 %% =============================================================================
 
--spec list(pid(), iodata(), riaks2c:request_options(), riaks2c:options()) -> 'ListBucketResult'().
+-spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> 'ListBucketResult'().
 list(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, Bucket, [], ReqOpts, fun
+	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, list_qs(ReqOpts), Bucket, [], ReqOpts, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec find(pid(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
+-spec find(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
 find(Pid, Bucket, Key, ReqOpts, Opts) ->
 	find(Pid, Bucket, Key, [], ReqOpts, Opts).
 
--spec find(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
+-spec find(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
 find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
@@ -66,11 +66,11 @@ find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec get(pid(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> iodata().
+-spec get(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> iodata().
 get(Pid, Bucket, Key, ReqOpts, Opts) ->
 	get(Pid, Bucket, Key, [], ReqOpts, Opts).
 
--spec get(pid(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> iodata().
+-spec get(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> iodata().
 get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
@@ -80,11 +80,11 @@ get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Key, Val, ContentType, ReqOpts, Opts) ->
 	put(Pid, Bucket, Key, Val, ContentType, [], ReqOpts, Opts).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Key, Val, ContentType, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers, ReqOpts, fun
@@ -93,11 +93,11 @@ put(Pid, Bucket, Key, Val, ContentType, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec copy(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec copy(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 copy(Pid, Bucket, Key, SourceBucket, SourceKey, ReqOpts, Opts) ->
 	copy(Pid, Bucket, Key, SourceBucket, SourceKey, [], ReqOpts, Opts).
 
--spec copy(pid(), iodata(), iodata(), iodata(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec copy(pid(), iodata(), iodata(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 copy(Pid, Bucket, Key, SourceBucket, SourceKey, Headers0, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers1 = [{<<"x-amz-copy-source">>, [<<$/>>, SourceBucket, <<$/>>, SourceKey]} | Headers0],
@@ -107,7 +107,7 @@ copy(Pid, Bucket, Key, SourceBucket, SourceKey, Headers0, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec remove(pid(), iodata(), iodata(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec remove(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 remove(Pid, Bucket, Key, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:delete(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, [], ReqOpts, fun
@@ -115,3 +115,19 @@ remove(Pid, Bucket, Key, ReqOpts, Opts) ->
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket, Key);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
+
+%% =============================================================================
+%% Internal functions
+%% =============================================================================
+
+-spec list_qs(riaks2c_http:request_options()) -> riak2c_http:qs().
+list_qs(ReqOpts) ->
+	list_qs(maps:to_list(ReqOpts), []).
+
+-spec list_qs(list(), riaks2c_http:qs()) -> riaks2c_http:qs().
+list_qs([{prefix, Val}|T], Acc)    -> list_qs(T, [{<<"prefix">>, Val} | Acc]);
+list_qs([{delimiter, Val}|T], Acc) -> list_qs(T, [{<<"delimiter">>, Val} | Acc]);
+list_qs([{marker, Val}|T], Acc)    -> list_qs(T, [{<<"marker">>, Val} | Acc]);
+list_qs([{max_keys, Val}|T], Acc)  -> list_qs(T, [{<<"max-keys">>, integer_to_binary(Val)} | Acc]);
+list_qs([_|T], Acc)                -> list_qs(T, Acc);
+list_qs([], Acc)                   -> Acc.

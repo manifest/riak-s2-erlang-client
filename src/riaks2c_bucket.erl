@@ -37,7 +37,7 @@
 %% API
 %% =============================================================================
 
--spec list(pid(), riaks2c:request_options(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
+-spec list(pid(), riaks2c_http:request_options(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
 list(Pid, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret} = Opts,
 	riaks2c_http:get(Pid, Id, Secret, <<$/>>, [], ReqOpts, fun
@@ -45,11 +45,11 @@ list(Pid, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), riaks2c:request_options(), riaks2c:options()) -> ok.
+-spec put(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok.
 put(Pid, Bucket, ReqOpts, Opts) ->
 	put(Pid, Bucket, [], ReqOpts, Opts).
 
--spec put(pid(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> ok.
+-spec put(pid(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok.
 put(Pid, Bucket, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:put(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers, ReqOpts, fun
@@ -57,7 +57,7 @@ put(Pid, Bucket, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec remove(pid(), iodata(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec remove(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 remove(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, [], ReqOpts, fun

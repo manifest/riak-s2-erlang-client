@@ -39,11 +39,11 @@
 %% API
 %% =============================================================================
 
--spec find(pid(), iodata(), riaks2c:request_options(), riaks2c:options()) -> {ok, map()} | {error, any()}.
+-spec find(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, map()} | {error, any()}.
 find(Pid, Bucket, ReqOpts, Opts) ->
 	find(Pid, Bucket, [], ReqOpts, Opts).
 
--spec find(pid(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> {ok, map()} | {error, any()}.
+-spec find(pid(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, map()} | {error, any()}.
 find(Pid, Bucket, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
@@ -52,11 +52,11 @@ find(Pid, Bucket, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec get(pid(), iodata(), riaks2c:request_options(), riaks2c:options()) -> map().
+-spec get(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> map().
 get(Pid, Bucket, ReqOpts, Opts) ->
 	get(Pid, Bucket, [], ReqOpts, Opts).
 
--spec get(pid(), iodata(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> map().
+-spec get(pid(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> map().
 get(Pid, Bucket, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
@@ -65,14 +65,14 @@ get(Pid, Bucket, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), map(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), map(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Policy, ReqOpts, Opts) ->
 	put(Pid, Bucket, Policy, [], ReqOpts, Opts).
 
 %% FIXME: 'PUT Bucket Policy' request should return '204 No Content' status code on success.
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/put-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTpolicy.html
--spec put(pid(), iodata(), map(), cow_http:headers(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), map(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Policy, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	ContentType = <<"application/json">>,
@@ -86,7 +86,7 @@ put(Pid, Bucket, Policy, Headers, ReqOpts, Opts) ->
 %% FIXME: 'DELETE Bucket Policy' request should return '204 No Content' status code on success.
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/delete-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketDELETEpolicy.html
--spec remove(pid(), iodata(), riaks2c:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec remove(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 remove(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	riaks2c_http:delete(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, [], ReqOpts, fun

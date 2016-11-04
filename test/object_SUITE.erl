@@ -43,15 +43,15 @@ init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
 %% - Creating a bucket for all testcases
-%% - Creating an object for all testcases but 'object_list'
+%% - Creating an object for all testcases but 'object_list', 'object_list_qs'
 init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:put(Pid, Bucket, #{}, Opts),
 	case Test of
-		object_list ->
-			[{bucket, Bucket} | Config];
+		object_list_qs -> [{bucket, Bucket} | Config];
+		object_list    -> [{bucket, Bucket} | Config];
 		_ ->
 			Key = riaks2c_cth:make_key(),
 			{Val, ContentType} = riaks2c_cth:make_content(),
@@ -60,14 +60,14 @@ init_per_testcase(Test, Config) ->
 	end.
 
 %% - Removing the recently created bucket for all testcases
-%% - Removing the recently created object for all testcases but 'object_list'
+%% - Removing the recently created object for all testcases but 'object_list', 'object_list_qs'
 end_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 	case Test of
-		object_list ->
-			ok;
+		object_list_qs -> ok;
+		object_list    -> ok;
 		_ ->
 			Key = ?config(key, Config),
 			ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts)
@@ -99,6 +99,27 @@ object_list(Config) ->
 	true = IsObjectExist(),
 	ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts),
 	false = IsObjectExist(),
+	true.
+
+object_list_qs(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	Keys =
+		[[<<"group_a_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 5)]
+		++ [[<<"group_b_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 3)],
+	Tests =
+		[	{8, #{}},
+			{2, #{max_keys => 2}},
+			{5, #{prefix => <<"group_a_">>}},
+			{3, #{prefix => <<"gr">>, delimiter => <<"_a_">>}} ],
+
+	[ok = riaks2c_object:put(Pid, Bucket, Key, Key, <<"text/plain">>, #{}, Opts) || Key <- Keys],
+	[begin
+		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:list(Pid, Bucket, ReqOpts, Opts),
+		N = length(Total)
+	end || {N, ReqOpts} <- Tests],
+	[riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts) || Key <- Keys],
 	true.
 
 object_copy(Config) ->
