@@ -229,9 +229,9 @@ handle_response(Pid, Ref, Timeout, Handle) ->
 await_data(Pid, Ref, Timeout, Mref, Acc) ->
 	receive
 		{gun_data, Pid, Ref, nofin, Data} ->
-			await_data(Pid, Ref, Timeout, Mref, <<Data/binary, Acc/binary>>);
+			await_data(Pid, Ref, Timeout, Mref, <<Acc/binary, Data/binary>>);
 		{gun_data, Pid, Ref, fin, Data} ->
-			<<Data/binary, Acc/binary>>;
+			<<Acc/binary, Data/binary>>;
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
 			exit(Reason);
