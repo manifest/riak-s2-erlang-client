@@ -31,7 +31,7 @@
 	head/9,
 	get/7,
 	get/9,
-	get/10,
+	get/11,
 	put/9,
 	put/11,
 	delete/9,
@@ -76,9 +76,9 @@ get(Pid, Id, Secret, Path, Headers, Opts, Handle) ->
 get(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
 	request(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers, Opts, Handle).
 
--spec get(pid(), iodata(), iodata(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
-get(Pid, Id, Secret, Host, Path, Qs, Bucket, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"GET">>, Host, Path, Qs, Bucket, Headers, Opts, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
+get(Pid, Id, Secret, Host, Path, SubRes, Qs, Bucket, Headers, Opts, Handle) ->
+	request(Pid, Id, Secret, <<"GET">>, Host, Path, SubRes, Qs, Bucket, Headers, Opts, Handle).
 
 -spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), headers(), request_options(), response_handler()) -> any().
 put(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
@@ -196,19 +196,35 @@ request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
 			| Headers0 ],
 	handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
 
-%% This function can't be used w/ subresources (?acl, ?policy, etc).
-%% Query String isn't used for signature calculation.
--spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
-request(Pid, Id, Secret, Method, Host, Path, Qs, Bucket, Headers0, Opts, Handle) ->
+%% This `request` function is used for requests that contain query string parameters,
+%% with or without subresource (empty binary `<<>>` is passed in that case).
+%% The problem is that subresource is also represented as query string parameter.
+%% While only subresource is used for building request's signature, we need a way
+%% to distinguish it from other parameters.
+%%
+%% For all other cases we use other `request` functions, passing subresource
+%% withing `Path` argument if needed.
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
+request(Pid, Id, Secret, Method, Host, Path, SubRes, Qs, Bucket, Headers0, Opts, Handle) ->
 	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
 	Date = cow_date:rfc7231(erlang:universaltime()),
-	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, Headers0),
+	Sign = signature_v2(Secret, Method, resource([<<$/>>, Bucket, Path], SubRes), Date, Headers0),
 	Headers1 =
 		[	{<<"date">>, Date},
 			{<<"host">>, [Bucket, <<$.>>, Host]},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
-	handle_response(Pid, gun:request(Pid, Method, [Path, <<$?>>, cow_qs:qs(Qs)], Headers1), Timeout, Handle).
+	handle_response(Pid, gun:request(Pid, Method, path(Path, SubRes, Qs), Headers1), Timeout, Handle).
+
+-spec path(iodata(), iodata(), qs()) -> iodata().
+path(Path, <<>>, [])   -> Path;
+path(Path, <<>>, Qs)   -> [Path, <<$?>>, cow_qs:qs(Qs)];
+path(Path, SubRes, []) -> [Path, <<$?>>, SubRes];
+path(Path, SubRes, Qs) -> [Path, <<$?>>, SubRes, <<$&>>, cow_qs:qs(Qs)].
+
+-spec resource(iodata(), iodata()) -> iodata().
+resource(Path, <<>>)   -> Path;
+resource(Path, SubRes) -> [Path, <<$?>>, SubRes].
 
 -spec amz_headers(list()) -> list().
 amz_headers(Input) ->

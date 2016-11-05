@@ -46,7 +46,7 @@
 -spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> 'ListBucketResult'().
 list(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, list_qs(ReqOpts), Bucket, [], ReqOpts, fun
+	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, list_qs(ReqOpts), Bucket, [], ReqOpts, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
