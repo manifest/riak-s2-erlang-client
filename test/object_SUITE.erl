@@ -54,8 +54,8 @@ init_per_testcase(Test, Config) ->
 		object_list    -> [{bucket, Bucket} | Config];
 		_ ->
 			Key = riaks2c_cth:make_key(),
-			{Val, ContentType} = riaks2c_cth:make_content(),
-			ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, #{}, Opts),
+			{Val, CT} = riaks2c_cth:make_content(),
+			ok = riaks2c_object:put(Pid, Bucket, Key, Val, #{content_type => CT}, Opts),
 			[{bucket, Bucket}, {key, Key} | Config]
 	end.
 
@@ -84,7 +84,6 @@ object_list(Config) ->
 	Bucket = ?config(bucket, Config),
 	Key = riaks2c_cth:make_key(),
 	ExpectKey = iolist_to_binary(Key),
-	{Val, ContentType} = riaks2c_cth:make_content(),
 	IsObjectExist =
 		fun() ->
 			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:list(Pid, Bucket, #{}, Opts),
@@ -95,7 +94,7 @@ object_list(Config) ->
 		end,
 
 	false = IsObjectExist(),
-	ok = riaks2c_object:put(Pid, Bucket, Key, Val, ContentType, #{}, Opts),
+	ok = riaks2c_object:put(Pid, Bucket, Key, <<42>>, #{}, Opts),
 	true = IsObjectExist(),
 	ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts),
 	false = IsObjectExist(),
@@ -114,7 +113,7 @@ object_list_qs(Config) ->
 			{5, #{prefix => <<"group_a_">>}},
 			{3, #{prefix => <<"gr">>, delimiter => <<"_a_">>}} ],
 
-	[ok = riaks2c_object:put(Pid, Bucket, Key, Key, <<"text/plain">>, #{}, Opts) || Key <- Keys],
+	[ok = riaks2c_object:put(Pid, Bucket, Key, <<42>>, #{}, Opts) || Key <- Keys],
 	[begin
 		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:list(Pid, Bucket, ReqOpts, Opts),
 		N = length(Total)

@@ -32,8 +32,8 @@
 	find/6,
 	get/5,
 	get/6,
+	put/6,
 	put/7,
-	put/8,
 	copy/7,
 	copy/8,
 	remove/5
@@ -80,13 +80,14 @@ get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-put(Pid, Bucket, Key, Val, ContentType, ReqOpts, Opts) ->
-	put(Pid, Bucket, Key, Val, ContentType, [], ReqOpts, Opts).
+-spec put(pid(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Key, Val, ReqOpts, Opts) ->
+	put(Pid, Bucket, Key, Val, [], ReqOpts, Opts).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-put(Pid, Bucket, Key, Val, ContentType, Headers, ReqOpts, Opts) ->
+-spec put(pid(), iodata(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Key, Val, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	ContentType = maps:get(content_type, ReqOpts, <<"application/octet-stream">>),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
