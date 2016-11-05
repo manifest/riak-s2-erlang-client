@@ -31,6 +31,41 @@
 -type 'Error'() :: #'Error'{}.
 
 
+-record('Upload', {anyAttribs :: anyAttribs(),
+	'Key' :: binary(),
+	'UploadId' :: binary(),
+	'Initiator' :: 'CanonicalUser'(),
+	'Owner' :: 'CanonicalUser'(),
+	'StorageClass' :: binary(),
+	'Initiated' :: binary()}).
+
+-type 'Upload'() :: #'Upload'{}.
+
+
+-record('ListMultipartUploadsResult', {anyAttribs :: anyAttribs(),
+	'Bucket' :: binary(),
+	'KeyMarker' :: binary(),
+	'UploadIdMarker' :: binary() | undefined,
+	'NextKeyMarker' :: binary() | undefined,
+	'NextUploadIdMarker' :: binary() | undefined,
+	'Delimiter' :: binary() | undefined,
+	'Prefix' :: binary() | undefined,
+	'MaxUploads' :: integer(),
+	'IsTruncated' :: boolean(),
+	'Upload' :: ['Upload'()] | undefined,
+	'CommonPrefixes' :: ['PrefixEntry'()] | undefined}).
+
+-type 'ListMultipartUploadsResult'() :: #'ListMultipartUploadsResult'{}.
+
+
+-record('InitiateMultipartUploadResult', {anyAttribs :: anyAttribs(),
+	'Bucket' :: binary(),
+	'Key' :: binary(),
+	'UploadId' :: binary()}).
+
+-type 'InitiateMultipartUploadResult'() :: #'InitiateMultipartUploadResult'{}.
+
+
 -record('TopicConfiguration', {anyAttribs :: anyAttribs(),
 	'Topic' :: binary(),
 	'Event' :: [binary()]}).

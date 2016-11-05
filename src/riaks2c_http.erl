@@ -34,6 +34,7 @@
 	get/9,
 	put/7,
 	put/8,
+	post/7,
 	delete/7,
 	await/4,
 	await/5,
@@ -124,6 +125,10 @@ put(Pid, Id, Secret, Host, Path, Bucket, Val, Headers0) ->
 			{AmzHeaders,    error,    error,     error} -> CL = content_length(Val), CS = content_md5(Val), [{<<"content-length">>, CL}, {<<"content-md5">>, CS}, {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, <<>>, Date, AmzHeaders))} | Headers0]
 		end,
 	gun:request(Pid, Method, Path, Headers1, Val).
+
+-spec post(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> reference().
+post(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
+	request(Pid, Id, Secret, <<"POST">>, Host, Path, Bucket, Headers).
 
 -spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> reference().
 delete(Pid, Id, Secret, Host, Path, Bucket, Headers) ->

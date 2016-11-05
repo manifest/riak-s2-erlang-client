@@ -317,6 +317,45 @@
 		</xsd:sequence>
 	</xsd:complexType>
 	
+	<xsd:element name="InitiateMultipartUploadResult">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="Bucket" type="xsd:string"/>
+				<xsd:element name="Key" type="xsd:string"/>
+				<xsd:element name="UploadId" type="xsd:string"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	
+	<xsd:element name="ListMultipartUploadsResult">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="Bucket" type="xsd:string"/>
+				<xsd:element name="KeyMarker" type="xsd:string"/>
+				<xsd:element name="UploadIdMarker" type="xsd:string" minOccurs="0"/>
+				<xsd:element name="NextKeyMarker" type="xsd:string" minOccurs="0"/>
+				<xsd:element name="NextUploadIdMarker" type="xsd:string" minOccurs="0"/>
+				<xsd:element name="Delimiter" type="xsd:string" minOccurs="0"/>
+				<xsd:element name="Prefix" type="xsd:string" minOccurs="0"/>
+				<xsd:element name="MaxUploads" type="xsd:int"/>
+				<xsd:element name="IsTruncated" type="xsd:boolean"/>
+				<xsd:element name="Upload" type="tns:Upload" minOccurs="0" maxOccurs="unbounded"/>
+				<xsd:element name="CommonPrefixes" type="tns:PrefixEntry" minOccurs="0" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:complexType name="Upload">
+		<xsd:sequence>
+			<xsd:element name="Key" type="xsd:string"/>
+			<xsd:element name="UploadId" type="xsd:string"/>
+			<xsd:element name="Initiator" type="tns:CanonicalUser"/>
+			<xsd:element name="Owner" type="tns:CanonicalUser"/>
+			<xsd:element name="StorageClass" type="tns:StorageClass"/>
+			<xsd:element name="Initiated" type="xsd:dateTime"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	
 	<xsd:element name="Error">
 		<xsd:complexType>
 			<xsd:sequence>
