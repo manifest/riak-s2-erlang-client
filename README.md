@@ -40,13 +40,13 @@ Here basic operations that you can perform. Refer to documentation to get to kno
 {ok, Pid} = gun:open(Host, Port, #{protocols => [http]}).
 
 %% Creating a bucket, uploading an object and get it back
-riaks2c_bucket:put(Pid, <<"test-bucket">>, #{}, Opts),
-riaks2c_object:put(Pid, <<"test-bucket">>, <<"test_file">>, <<"content">>, <<"text/plain">>, #{}, Opts),
-riaks2c_object:get(Pid, <<"test-bucket">>, <<"test_file">>, #{}, Opts).
-%% <<"content">>
+riaks2c_bucket:put(Pid, <<"test-bucket">>, Opts),
+riaks2c_object:put(Pid, <<"test-bucket">>, <<"test_file">>, <<42>>, Opts),
+riaks2c_object:get(Pid, <<"test-bucket">>, <<"test_file">>, Opts).
+%% <<42>>
 
 %% Listing buckets
-riaks2c_bucket:list(Pid, #{}, Opts).
+riaks2c_bucket:list(Pid, Opts).
 %% {'ListAllMyBucketsResult',[],
 %%   {'CanonicalUser',[],
 %%     <<"9897a3ea1c87262d4726b28b3e41c1e70bc9e20f54acdc12c5081e62f67b3323">>,
@@ -56,7 +56,7 @@ riaks2c_bucket:list(Pid, #{}, Opts).
 %%       <<"2016-11-04T09:47:47.000Z">>}]}}
 
 %% Listing objects
-riaks2c_object:list(Pid, <<"test-bucket">>, #{}, Opts).
+riaks2c_object:list(Pid, <<"test-bucket">>, Opts).
 %% {'ListBucketResult',[],
 %%   undefined,<<"test-bucket">>,[],[],
 %%   undefined,1000,[],false,
@@ -70,8 +70,8 @@ riaks2c_object:list(Pid, <<"test-bucket">>, #{}, Opts).
 %%   undefined}
 
 %% Cleaning up
-riaks2c_object:remove(Pid, <<"test-bucket">>, <<"test_file">>, #{}, Opts),
-riaks2c_bucket:remove(Pid, <<"test-bucket">>, #{}, Opts).
+riaks2c_object:remove(Pid, <<"test-bucket">>, <<"test_file">>, Opts),
+riaks2c_bucket:remove(Pid, <<"test-bucket">>, Opts).
 ```
 
 

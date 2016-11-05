@@ -26,12 +26,13 @@
 
 %% API
 -export([
+	find/3,
 	find/4,
-	find/5,
+	get/3,
 	get/4,
-	get/5,
+	put/4,
 	put/5,
-	put/6,
+	remove/3,
 	remove/4
 ]).
 
@@ -39,42 +40,45 @@
 %% API
 %% =============================================================================
 
+-spec find(pid(), iodata(), riaks2c:options()) -> {ok, map()} | {error, any()}.
+find(Pid, Bucket, Opts) ->
+	find(Pid, Bucket, #{}, Opts).
+
 -spec find(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, map()} | {error, any()}.
 find(Pid, Bucket, ReqOpts, Opts) ->
-	find(Pid, Bucket, [], ReqOpts, Opts).
-
--spec find(pid(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, map()} | {error, any()}.
-find(Pid, Bucket, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec get(pid(), iodata(), riaks2c:options()) -> map().
+get(Pid, Bucket, Opts) ->
+	get(Pid, Bucket, #{}, Opts).
+
 -spec get(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> map().
 get(Pid, Bucket, ReqOpts, Opts) ->
-	get(Pid, Bucket, [], ReqOpts, Opts).
-
--spec get(pid(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> map().
-get(Pid, Bucket, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Json) -> jsx:decode(Json, [return_maps]);
 		(404, _Hs, Xml)  -> riaks2c_http:throw_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), map(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-put(Pid, Bucket, Policy, ReqOpts, Opts) ->
-	put(Pid, Bucket, Policy, [], ReqOpts, Opts).
+-spec put(pid(), iodata(), map(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Policy, Opts) ->
+	put(Pid, Bucket, Policy, #{}, Opts).
 
 %% FIXME: 'PUT Bucket Policy' request should return '204 No Content' status code on success.
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/put-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTpolicy.html
--spec put(pid(), iodata(), map(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-put(Pid, Bucket, Policy, Headers, ReqOpts, Opts) ->
+-spec put(pid(), iodata(), map(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Policy, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = <<"application/json">>,
 	Val = jsx:encode(Policy),
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentType, Headers, ReqOpts, fun
@@ -83,13 +87,18 @@ put(Pid, Bucket, Policy, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec remove(pid(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+remove(Pid, Bucket, Opts) ->
+	remove(Pid, Bucket, #{}, Opts).
+
 %% FIXME: 'DELETE Bucket Policy' request should return '204 No Content' status code on success.
 %% http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/s3/delete-bucket-policy
 %% http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketDELETEpolicy.html
 -spec remove(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 remove(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:delete(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, [], ReqOpts, fun
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:delete(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)

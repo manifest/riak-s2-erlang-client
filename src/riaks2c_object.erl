@@ -27,15 +27,17 @@
 
 %% API
 -export([
+	list/3,
 	list/4,
+	find/4,
 	find/5,
-	find/6,
+	get/4,
 	get/5,
-	get/6,
+	put/5,
 	put/6,
-	put/7,
+	copy/6,
 	copy/7,
-	copy/8,
+	remove/4,
 	remove/5
 ]).
 
@@ -43,22 +45,28 @@
 %% API
 %% =============================================================================
 
+-spec list(pid(), iodata(), riaks2c:options()) -> 'ListBucketResult'().
+list(Pid, Bucket, Opts) ->
+	list(Pid, Bucket, #{}, Opts).
+
 -spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> 'ListBucketResult'().
 list(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, list_qs(ReqOpts), Bucket, [], ReqOpts, fun
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, list_qs(ReqOpts), Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec find(pid(), iodata(), iodata(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
+find(Pid, Bucket, Key, Opts) ->
+	find(Pid, Bucket, Key, #{}, Opts).
+
 -spec find(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
 find(Pid, Bucket, Key, ReqOpts, Opts) ->
-	find(Pid, Bucket, Key, [], ReqOpts, Opts).
-
--spec find(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, iodata()} | {error, any()}.
-find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
 	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Bin) -> Bin;
@@ -66,13 +74,14 @@ find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec get(pid(), iodata(), iodata(), riaks2c:options()) -> iodata().
+get(Pid, Bucket, Key, Opts) ->
+	get(Pid, Bucket, Key, #{}, Opts).
+
 -spec get(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> iodata().
 get(Pid, Bucket, Key, ReqOpts, Opts) ->
-	get(Pid, Bucket, Key, [], ReqOpts, Opts).
-
--spec get(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> iodata().
-get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
 	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Bin) -> Bin;
@@ -80,13 +89,14 @@ get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec put(pid(), iodata(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Key, Val, Opts) ->
+	put(Pid, Bucket, Key, Val, #{}, Opts).
+
 -spec put(pid(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Key, Val, ReqOpts, Opts) ->
-	put(Pid, Bucket, Key, Val, [], ReqOpts, Opts).
-
--spec put(pid(), iodata(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-put(Pid, Bucket, Key, Val, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = maps:get(content_type, ReqOpts, <<"application/octet-stream">>),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
@@ -94,24 +104,31 @@ put(Pid, Bucket, Key, Val, Headers, ReqOpts, Opts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec copy(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+copy(Pid, Bucket, Key, SourceBucket, SourceKey, Opts) ->
+	copy(Pid, Bucket, Key, SourceBucket, SourceKey, #{}, Opts).
+
 -spec copy(pid(), iodata(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 copy(Pid, Bucket, Key, SourceBucket, SourceKey, ReqOpts, Opts) ->
-	copy(Pid, Bucket, Key, SourceBucket, SourceKey, [], ReqOpts, Opts).
-
--spec copy(pid(), iodata(), iodata(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-copy(Pid, Bucket, Key, SourceBucket, SourceKey, Headers0, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	Headers1 = [{<<"x-amz-copy-source">>, [<<$/>>, SourceBucket, <<$/>>, SourceKey]} | Headers0],
-	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers1, ReqOpts, fun
+	Headers =
+		[	{<<"x-amz-copy-source">>, [<<$/>>, SourceBucket, <<$/>>, SourceKey]}
+			| maps:get(headers, ReqOpts, []) ],
+	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec remove(pid(), iodata(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+remove(Pid, Bucket, Key, Opts) ->
+	remove(Pid, Bucket, Key, #{}, Opts).
+
 -spec remove(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 remove(Pid, Bucket, Key, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:delete(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, [], ReqOpts, fun
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:delete(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket, Key);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)

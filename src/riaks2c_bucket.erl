@@ -27,9 +27,11 @@
 
 %% API
 -export([
+	list/2,
 	list/3,
+	put/3,
 	put/4,
-	put/5,
+	remove/3,
 	remove/4
 ]).
 
@@ -37,30 +39,41 @@
 %% API
 %% =============================================================================
 
+-spec list(pid(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
+list(Pid, Opts) ->
+	list(Pid, #{}, Opts).
+
 -spec list(pid(), riaks2c_http:request_options(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
 list(Pid, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret} = Opts,
-	riaks2c_http:get(Pid, Id, Secret, <<$/>>, [], ReqOpts, fun
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:get(Pid, Id, Secret, <<$/>>, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec put(pid(), iodata(), riaks2c:options()) -> ok.
+put(Pid, Bucket, Opts) ->
+	put(Pid, Bucket, #{}, Opts).
+
 -spec put(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok.
 put(Pid, Bucket, ReqOpts, Opts) ->
-	put(Pid, Bucket, [], ReqOpts, Opts).
-
--spec put(pid(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok.
-put(Pid, Bucket, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:put(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, _Xml) -> ok;
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec remove(pid(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+remove(Pid, Bucket, Opts) ->
+	remove(Pid, Bucket, #{}, Opts).
+
 -spec remove(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 remove(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, [], ReqOpts, fun
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers, ReqOpts, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)

@@ -27,51 +27,54 @@
 
 %% API
 -export([
+	find/4,
 	find/5,
-	find/6,
+	get/4,
 	get/5,
-	get/6,
-	put/6,
-	put/7
+	put/5,
+	put/6
 ]).
 
 %% =============================================================================
 %% API
 %% =============================================================================
 
+-spec find(pid(), iodata(), iodata(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+find(Pid, Bucket, Key, Opts) ->
+	find(Pid, Bucket, Key, #{}, Opts).
+
 -spec find(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 find(Pid, Bucket, Key, ReqOpts, Opts) ->
-	find(Pid, Bucket, Key, [], ReqOpts, Opts).
-
--spec find(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
-find(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket, Key);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec get(pid(), iodata(), iodata(), riaks2c:options()) -> 'AccessControlPolicy'().
+get(Pid, Bucket, Key, Opts) ->
+	get(Pid, Bucket, Key, #{}, Opts).
+
 -spec get(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
 get(Pid, Bucket, Key, ReqOpts, Opts) ->
-	get(Pid, Bucket, Key, [], ReqOpts, Opts).
-
--spec get(pid(), iodata(), iodata(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
-get(Pid, Bucket, Key, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket, Key);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riaks2c:options()) -> ok | {error, any()}.
+put(Pid, Bucket, Key, ACL, Opts) ->
+	put(Pid, Bucket, Key, ACL, #{}, Opts).
+
 -spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
 put(Pid, Bucket, Key, ACL, ReqOpts, Opts) ->
-	put(Pid, Bucket, Key, ACL, [], ReqOpts, Opts).
-
--spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riak2c_http:headers(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
-put(Pid, Bucket, Key, ACL, Headers, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = <<"application/xml">>,
 	Val = riaks2c_xsd:write(ACL),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Val, ContentType, Headers, ReqOpts, fun

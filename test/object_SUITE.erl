@@ -70,7 +70,7 @@ end_per_testcase(Test, Config) ->
 		object_list    -> ok;
 		_ ->
 			Key = ?config(key, Config),
-			ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts)
+			ok = riaks2c_object:remove(Pid, Bucket, Key, Opts)
 	end,
 	ok = riaks2c_bucket:remove(Pid, Bucket, #{}, Opts).
 
@@ -86,7 +86,7 @@ object_list(Config) ->
 	ExpectKey = iolist_to_binary(Key),
 	IsObjectExist =
 		fun() ->
-			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:list(Pid, Bucket, #{}, Opts),
+			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:list(Pid, Bucket, Opts),
 			case Objects of
 				undefined -> false;
 				_         -> lists:any(fun(#'ListEntry'{'Key' = Kval}) -> Kval =:= ExpectKey end, Objects)
@@ -94,9 +94,9 @@ object_list(Config) ->
 		end,
 
 	false = IsObjectExist(),
-	ok = riaks2c_object:put(Pid, Bucket, Key, <<42>>, #{}, Opts),
+	ok = riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts),
 	true = IsObjectExist(),
-	ok = riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts),
+	ok = riaks2c_object:remove(Pid, Bucket, Key, Opts),
 	false = IsObjectExist(),
 	true.
 
@@ -113,12 +113,12 @@ object_list_qs(Config) ->
 			{5, #{prefix => <<"group_a_">>}},
 			{3, #{prefix => <<"gr">>, delimiter => <<"_a_">>}} ],
 
-	[ok = riaks2c_object:put(Pid, Bucket, Key, <<42>>, #{}, Opts) || Key <- Keys],
+	[ok = riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts) || Key <- Keys],
 	[begin
 		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:list(Pid, Bucket, ReqOpts, Opts),
 		N = length(Total)
 	end || {N, ReqOpts} <- Tests],
-	[riaks2c_object:remove(Pid, Bucket, Key, #{}, Opts) || Key <- Keys],
+	[riaks2c_object:remove(Pid, Bucket, Key, Opts) || Key <- Keys],
 	true.
 
 object_copy(Config) ->
@@ -129,9 +129,9 @@ object_copy(Config) ->
 	DestKey = riaks2c_cth:make_key(),
 
 	{error, {bad_key, Bucket, DestKey}} = riaks2c_object:find(Pid, Bucket, DestKey, #{return_body => false}, Opts),
-	ok = riaks2c_object:copy(Pid, Bucket, DestKey, Bucket, SourceKey, #{}, Opts),
+	ok = riaks2c_object:copy(Pid, Bucket, DestKey, Bucket, SourceKey, Opts),
 	_ = riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts),
-	ok = riaks2c_object:remove(Pid, Bucket, DestKey, #{}, Opts),
+	ok = riaks2c_object:remove(Pid, Bucket, DestKey, Opts),
 	true.
 
 object_acl_roundtrip(Config) ->
@@ -152,11 +152,11 @@ object_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_object_acl:find(Pid, Bucket, Key, #{}, Opts),
-	ok = riaks2c_object_acl:put(Pid, Bucket, Key, ACL, #{}, Opts),
+	{ok, _} = riaks2c_object_acl:find(Pid, Bucket, Key, Opts),
+	ok = riaks2c_object_acl:put(Pid, Bucket, Key, ACL, Opts),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:get(Pid, Bucket, Key, #{}, Opts),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:get(Pid, Bucket, Key, Opts),
 
 	true.
