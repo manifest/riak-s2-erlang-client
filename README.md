@@ -76,6 +76,20 @@ riaks2c_bucket:remove(Pid, <<"test-bucket">>, Opts).
 
 
 
+### Troubleshooting
+
+Using Docker container with Riak S2 on macOS, you can start getting "RequestTimeTooSkewed" error messages.
+It happens because Docker synchronizes container's time with its host OS
+(which is Linux OS managed by docker-machine and isn't macOS).
+It can be fixed in this way:
+
+```bash
+$ docker-machine ssh
+$ sudo ntpclient -s -h time.apple.com
+```
+
+
+
 ### License
 
 The source code is provided under the terms of [the MIT license][license].
