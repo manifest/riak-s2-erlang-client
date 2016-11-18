@@ -74,11 +74,11 @@ await_list(Pid, Ref) ->
 -spec await_list(pid(), reference(), riaks2c_http:request_options()) -> 'ListBucketResult'().
 await_list(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
-  riaks2c_http:await(Pid, Ref, Timeout, fun
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-  end).
+	end).
 
 -spec find(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
 find(Pid, Bucket, Key, Opts) ->

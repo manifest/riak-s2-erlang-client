@@ -142,8 +142,8 @@ await_remove(Pid, Ref) ->
 -spec await_remove(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
 await_remove(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
-  riaks2c_http:await(Pid, Ref, Timeout, fun
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-  end).
+	end).

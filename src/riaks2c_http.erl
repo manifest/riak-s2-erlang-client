@@ -229,22 +229,26 @@ await_response(Pid, Ref, Timeout, Handle) ->
 		{gun_response, Pid, Ref, nofin, Status, Headers} ->
 			Data = await_data(Pid, Ref, Timeout, Mref, <<>>),
 			demonitor(Mref, [flush]),
+			gun:flush(Ref),
 			Handle(Status, Headers, Data);
 		{gun_response, Pid, Ref, fin, Status, Headers} ->
 			demonitor(Mref, [flush]),
+			gun:flush(Ref),
 			Handle(Status, Headers, <<>>);
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
+			gun:flush(Ref),
 			exit(Reason);
 		{gun_error, Pid, Reason} ->
 			demonitor(Mref, [flush]),
+			gun:flush(Ref),
 			exit(Reason);
 		{'DOWN', Mref, process, Pid, Reason} ->
-			exit(Reason);
-		_ ->
-			await_response(Pid, Ref, Timeout, Handle)
+			gun:flush(Ref),
+			exit(Reason)
 	after Timeout ->
 		demonitor(Mref, [flush]),
+		gun:flush(Ref),
 		exit(timeout)
 	end.
 
@@ -257,16 +261,18 @@ await_data(Pid, Ref, Timeout, Mref, Acc) ->
 			<<Acc/binary, Data/binary>>;
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
+			gun:flush(Ref),
 			exit(Reason);
 		{gun_error, Pid, Reason} ->
 			demonitor(Mref, [flush]),
+			gun:flush(Ref),
 			exit(Reason);
 		{'DOWN', Mref, process, Pid, Reason} ->
-			exit(Reason);
-		_ ->
-			await_data(Pid, Ref, Timeout, Mref, Acc)
+			gun:flush(Ref),
+			exit(Reason)
 	after Timeout ->
 		demonitor(Mref, [flush]),
+		gun:flush(Ref),
 		exit(timeout)
 	end.
 

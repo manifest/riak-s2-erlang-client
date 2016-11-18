@@ -47,13 +47,13 @@
 
 -spec list(pid(), riaks2c:options()) -> reference().
 list(Pid, Opts) ->
-  list(Pid, #{}, Opts).
+	list(Pid, #{}, Opts).
 
 -spec list(pid(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 list(Pid, ReqOpts, Opts) ->
-  #{id := Id, secret := Secret} = Opts,
+	#{id := Id, secret := Secret} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-  riaks2c_http:get(Pid, Id, Secret, <<$/>>, Headers).
+	riaks2c_http:get(Pid, Id, Secret, <<$/>>, Headers).
 
 -spec await_list(pid(), reference()) -> 'ListAllMyBucketsResult'().
 await_list(Pid, Ref) ->
@@ -62,10 +62,10 @@ await_list(Pid, Ref) ->
 -spec await_list(pid(), reference(), riaks2c_http:request_options()) -> 'ListAllMyBucketsResult'().
 await_list(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
-  riaks2c_http:await(Pid, Ref, Timeout, fun
-    (200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
-    (_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-  end).
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
 
 -spec put(pid(), iodata(), riaks2c:options()) -> reference().
 put(Pid, Bucket, Opts) ->
@@ -84,10 +84,10 @@ await_put(Pid, Ref) ->
 -spec await_put(pid(), reference(), riaks2c_http:request_options()) -> ok.
 await_put(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
-  riaks2c_http:await(Pid, Ref, Timeout, fun
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _Xml) -> ok;
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
-  end).
+	end).
 
 -spec remove(pid(), iodata(), riaks2c:options()) -> reference().
 remove(Pid, Bucket, Opts) ->
@@ -106,8 +106,8 @@ await_remove(Pid, Ref) ->
 -spec await_remove(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
 await_remove(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
-  riaks2c_http:await(Pid, Ref, Timeout, fun
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-  end).
+	end).
