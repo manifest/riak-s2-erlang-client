@@ -57,10 +57,11 @@ list(Pid, ReqOpts, Opts) ->
 
 -spec await_list(pid(), reference()) -> 'ListAllMyBucketsResult'().
 await_list(Pid, Ref) ->
-	await_list(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_list(Pid, Ref, #{}).
 
--spec await_list(pid(), reference(), timeout()) -> 'ListAllMyBucketsResult'().
-await_list(Pid, Ref, Timeout) ->
+-spec await_list(pid(), reference(), riaks2c_http:request_options()) -> 'ListAllMyBucketsResult'().
+await_list(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
   riaks2c_http:await(Pid, Ref, Timeout, fun
     (200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
     (_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
@@ -78,10 +79,11 @@ put(Pid, Bucket, ReqOpts, Opts) ->
 
 -spec await_put(pid(), reference()) -> ok.
 await_put(Pid, Ref) ->
-	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_put(Pid, Ref, #{}).
 
--spec await_put(pid(), reference(), timeout()) -> ok.
-await_put(Pid, Ref, Timeout) ->
+-spec await_put(pid(), reference(), riaks2c_http:request_options()) -> ok.
+await_put(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
   riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _Xml) -> ok;
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
@@ -99,10 +101,11 @@ remove(Pid, Bucket, ReqOpts, Opts) ->
 
 -spec await_remove(pid(), reference()) -> ok | {error, any()}.
 await_remove(Pid, Ref) ->
-	await_remove(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_remove(Pid, Ref, #{}).
 
--spec await_remove(pid(), reference(), timeout()) -> ok | {error, any()}.
-await_remove(Pid, Ref, Timeout) ->
+-spec await_remove(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
+await_remove(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
   riaks2c_http:await(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);

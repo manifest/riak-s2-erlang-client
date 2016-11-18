@@ -60,10 +60,11 @@ find(Pid, Bucket, ReqOpts, Opts) ->
 
 -spec await_find(pid(), reference()) -> {ok, map()} | {error, any()}.
 await_find(Pid, Ref) ->
-	await_find(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_find(Pid, Ref, #{}).
 
--spec await_find(pid(), reference(), timeout()) -> {ok, map()} | {error, any()}.
-await_find(Pid, Ref, Timeout) ->
+-spec await_find(pid(), reference(), riaks2c_http:request_options()) -> {ok, map()} | {error, any()}.
+await_find(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
@@ -82,10 +83,11 @@ get(Pid, Bucket, ReqOpts, Opts) ->
 
 -spec await_get(pid(), reference()) -> map().
 await_get(Pid, Ref) ->
-	await_get(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_get(Pid, Ref, #{}).
 
--spec await_get(pid(), reference(), timeout()) -> map().
-await_get(Pid, Ref, Timeout) ->
+-spec await_get(pid(), reference(), riaks2c_http:request_options()) -> map().
+await_get(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Json) -> jsx:decode(Json, [return_maps]);
 		(404, _Hs, Xml)  -> riaks2c_http:throw_response_error_404(Xml);
@@ -107,12 +109,13 @@ put(Pid, Bucket, Policy, ReqOpts, Opts) ->
 	Val = jsx:encode(Policy),
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentType, Headers).
 
--spec await_put(pid(), reference(), timeout()) -> ok | {error, any()}.
+-spec await_put(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
 await_put(Pid, Ref) ->
-	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_put(Pid, Ref, #{}).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
-await_put(Pid, Ref, Timeout) ->
+await_put(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
@@ -134,10 +137,11 @@ remove(Pid, Bucket, ReqOpts, Opts) ->
 
 -spec await_remove(pid(), reference()) -> ok | {error, any()}.
 await_remove(Pid, Ref) ->
-	await_remove(Pid, Ref, riaks2c_http:default_request_timeout()).
+	await_remove(Pid, Ref, #{}).
 
--spec await_remove(pid(), reference(), timeout()) -> ok | {error, any()}.
-await_remove(Pid, Ref, Timeout) ->
+-spec await_remove(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
+await_remove(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
   riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
