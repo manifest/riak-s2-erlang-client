@@ -29,52 +29,82 @@
 -export([
 	list/2,
 	list/3,
+	await_list/2,
+	await_list/3,
 	put/3,
 	put/4,
+	await_put/2,
+	await_put/3,
 	remove/3,
-	remove/4
+	remove/4,
+	await_remove/2,
+	await_remove/3
 ]).
 
 %% =============================================================================
 %% API
 %% =============================================================================
 
--spec list(pid(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
+-spec list(pid(), riaks2c:options()) -> reference().
 list(Pid, Opts) ->
-	list(Pid, #{}, Opts).
+  list(Pid, #{}, Opts).
 
--spec list(pid(), riaks2c_http:request_options(), riaks2c:options()) -> 'ListAllMyBucketsResult'().
+-spec list(pid(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 list(Pid, ReqOpts, Opts) ->
-	#{id := Id, secret := Secret} = Opts,
+  #{id := Id, secret := Secret} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, <<$/>>, Headers, ReqOpts, fun
-		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-	end).
+  riaks2c_http:get(Pid, Id, Secret, <<$/>>, Headers).
 
--spec put(pid(), iodata(), riaks2c:options()) -> ok.
+-spec await_list(pid(), reference()) -> 'ListAllMyBucketsResult'().
+await_list(Pid, Ref) ->
+	await_list(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_list(pid(), reference(), timeout()) -> 'ListAllMyBucketsResult'().
+await_list(Pid, Ref, Timeout) ->
+  riaks2c_http:await(Pid, Ref, Timeout, fun
+    (200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+    (_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+  end).
+
+-spec put(pid(), iodata(), riaks2c:options()) -> reference().
 put(Pid, Bucket, Opts) ->
 	put(Pid, Bucket, #{}, Opts).
 
--spec put(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok.
+-spec put(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 put(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:put(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers, ReqOpts, fun
+	riaks2c_http:put(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers).
+
+-spec await_put(pid(), reference()) -> ok.
+await_put(Pid, Ref) ->
+	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_put(pid(), reference(), timeout()) -> ok.
+await_put(Pid, Ref, Timeout) ->
+  riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _Xml) -> ok;
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
-	end).
+  end).
 
--spec remove(pid(), iodata(), riaks2c:options()) -> ok | {error, any()}.
+-spec remove(pid(), iodata(), riaks2c:options()) -> reference().
 remove(Pid, Bucket, Opts) ->
 	remove(Pid, Bucket, #{}, Opts).
 
--spec remove(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec remove(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 remove(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers, ReqOpts, fun
+	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers).
+
+-spec await_remove(pid(), reference()) -> ok | {error, any()}.
+await_remove(Pid, Ref) ->
+	await_remove(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_remove(pid(), reference(), timeout()) -> ok | {error, any()}.
+await_remove(Pid, Ref, Timeout) ->
+  riaks2c_http:await(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-	end).
+  end).

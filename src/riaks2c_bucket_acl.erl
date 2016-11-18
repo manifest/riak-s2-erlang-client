@@ -29,55 +29,85 @@
 -export([
 	find/3,
 	find/4,
+	await_find/2,
+	await_find/3,
 	get/3,
 	get/4,
+	await_get/2,
+	await_get/3,
 	put/4,
-	put/5
+	put/5,
+	await_put/2,
+	await_put/3
 ]).
 
 %% =============================================================================
 %% API
 %% =============================================================================
 
--spec find(pid(), iodata(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+-spec find(pid(), iodata(), riaks2c:options()) -> reference().
 find(Pid, Bucket, Opts) ->
 	find(Pid, Bucket, #{}, Opts).
 
--spec find(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+-spec find(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 find(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers, ReqOpts, fun
+	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers).
+
+-spec await_find(pid(), reference()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+await_find(Pid, Ref) ->
+	await_find(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_find(pid(), reference(), timeout()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+await_find(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec get(pid(), iodata(), riaks2c:options()) -> 'AccessControlPolicy'().
+-spec get(pid(), iodata(), riaks2c:options()) -> reference().
 get(Pid, Bucket, Opts) ->
 	get(Pid, Bucket, #{}, Opts).
 
--spec get(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> 'AccessControlPolicy'().
+-spec get(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 get(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers, ReqOpts, fun
+	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers).
+
+-spec await_get(pid(), reference()) -> 'AccessControlPolicy'().
+await_get(Pid, Ref) ->
+	await_get(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_get(pid(), reference(), timeout()) -> 'AccessControlPolicy'().
+await_get(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec put(pid(), iodata(), 'AccessControlPolicy'(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), 'AccessControlPolicy'(), riaks2c:options()) -> reference().
 put(Pid, Bucket, ACL, Opts) ->
 	put(Pid, Bucket, ACL, #{}, Opts).
 
--spec put(pid(), iodata(), 'AccessControlPolicy'(), riaks2c_http:request_options(), riaks2c:options()) -> ok | {error, any()}.
+-spec put(pid(), iodata(), 'AccessControlPolicy'(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 put(Pid, Bucket, ACL, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = <<"application/xml">>,
 	Val = riaks2c_xsd:write(ACL),
-	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Val, ContentType, Headers, ReqOpts, fun
+	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Val, ContentType, Headers).
+
+-spec await_put(pid(), reference(), timeout()) -> ok | {error, any()}.
+await_put(Pid, Ref) ->
+	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_put(pid(), reference()) -> ok | {error, any()}.
+await_put(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)

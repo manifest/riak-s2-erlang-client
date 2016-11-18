@@ -48,7 +48,7 @@ init_per_testcase(_Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
-	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, Opts)),
 	[{bucket, Bucket} | Config].
 
 %% Removing the recently created bucket for all testcases but 'bucket_list'
@@ -57,7 +57,7 @@ end_per_testcase(_Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
-	ok = riaks2c_bucket:remove(Pid, Bucket, Opts).
+	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, Opts)).
 
 %% =============================================================================
 %% Tests
@@ -73,7 +73,7 @@ bucket_list(Config) ->
 			#'ListAllMyBucketsResult'{
 				'Buckets' =
 					#'ListAllMyBucketsList'{
-						'Bucket' = Buckets}} = riaks2c_bucket:list(Pid, Opts),
+						'Bucket' = Buckets}} = riaks2c_bucket:await_list(Pid, riaks2c_bucket:list(Pid, Opts)),
 
 			case Buckets of
 				undefined -> false;
@@ -82,9 +82,9 @@ bucket_list(Config) ->
 		end,
 
 	false = IsBucketExist(),
-	ok = riaks2c_bucket:put(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, Opts)),
 	true = IsBucketExist(),
-	ok = riaks2c_bucket:remove(Pid, Bucket, Opts),
+	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, Opts)),
 	false = IsBucketExist(),
 	true.
 
@@ -93,7 +93,7 @@ bucket_acl_roundtrip(Config) ->
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 
-	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:list(Pid, Opts),
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:await_list(Pid, riaks2c_bucket:list(Pid, Opts)),
 	ExpectedPermission = <<"READ">>,
 	ACL =
 		#'AccessControlPolicy'{
@@ -105,12 +105,12 @@ bucket_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_bucket_acl:find(Pid, Bucket, Opts),
-	ok = riaks2c_bucket_acl:put(Pid, Bucket, ACL, Opts),
+	{ok, _} = riaks2c_bucket_acl:await_find(Pid, riaks2c_bucket_acl:find(Pid, Bucket, Opts)),
+	ok = riaks2c_bucket_acl:await_put(Pid, riaks2c_bucket_acl:put(Pid, Bucket, ACL, Opts)),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:get(Pid, Bucket, Opts),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:await_get(Pid, riaks2c_bucket_acl:get(Pid, Bucket, Opts)),
 
 	true.
 
@@ -131,10 +131,9 @@ bucket_policy_roundtrip(Config) ->
 							#{<<"IpAddress">> =>
 								#{<<"aws:SourceIp">> => <<"192.0.72.1/24">>}}} ]},
 
-	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:find(Pid, Bucket, Opts),
-	ok = riaks2c_bucket_policy:put(Pid, Bucket, Policy, Opts),
-	Policy = riaks2c_bucket_policy:get(Pid, Bucket, Opts),
-	ok = riaks2c_bucket_policy:remove(Pid, Bucket, Opts),
-	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:find(Pid, Bucket, Opts),
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_find(Pid, riaks2c_bucket_policy:find(Pid, Bucket, Opts)),
+	ok = riaks2c_bucket_policy:await_put(Pid, riaks2c_bucket_policy:put(Pid, Bucket, Policy, Opts)),
+	Policy = riaks2c_bucket_policy:await_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
+	ok = riaks2c_bucket_policy:await_remove(Pid, riaks2c_bucket_policy:remove(Pid, Bucket, Opts)),
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_find(Pid, riaks2c_bucket_policy:find(Pid, Bucket, Opts)),
 	true.
-

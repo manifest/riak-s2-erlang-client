@@ -27,20 +27,22 @@
 
 %% API
 -export([
+	head/5,
 	head/7,
-	head/9,
+	get/5,
 	get/7,
 	get/9,
-	get/11,
+	put/7,
 	put/9,
-	put/11,
-	delete/9,
+	delete/7,
+	await/4,
 	signature_v2/5,
 	signature_v2/7,
 	access_token_v2/2,
 	throw_response_error/1,
 	throw_response_error_404/1,
-	return_response_error_404/1
+	return_response_error_404/1,
+	default_request_timeout/0
 ]).
 
 %% Definitions
@@ -58,33 +60,32 @@
 %% API
 %% =============================================================================
 
--spec head(pid(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
-head(Pid, Id, Secret, Path, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"HEAD">>, Path, Headers, Opts, Handle).
+-spec head(pid(), iodata(), iodata(), iodata(), headers()) -> reference().
+head(Pid, Id, Secret, Path, Headers) ->
+	request(Pid, Id, Secret, <<"HEAD">>, Path, Headers).
 
--spec head(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
-head(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"HEAD">>, Host, Path, Bucket, Headers, Opts, Handle).
+-spec head(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> reference().
+head(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
+	request(Pid, Id, Secret, <<"HEAD">>, Host, Path, Bucket, Headers).
 
--spec get(pid(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
-get(Pid, Id, Secret, Path, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"GET">>, Path, Headers, Opts, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), headers()) -> reference().
+get(Pid, Id, Secret, Path, Headers) ->
+	request(Pid, Id, Secret, <<"GET">>, Path, Headers).
 
--spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
-get(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers, Opts, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> reference().
+get(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
+	request(Pid, Id, Secret, <<"GET">>, Host, Path, Bucket, Headers).
 
--spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
-get(Pid, Id, Secret, Host, Path, SubRes, Qs, Bucket, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"GET">>, Host, Path, SubRes, Qs, Bucket, Headers, Opts, Handle).
+-spec get(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), qs(), iodata(), headers()) -> reference().
+get(Pid, Id, Secret, Host, Path, SubRes, Qs, Bucket, Headers) ->
+	request(Pid, Id, Secret, <<"GET">>, Host, Path, SubRes, Qs, Bucket, Headers).
 
--spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), headers(), request_options(), response_handler()) -> any().
-put(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers, Opts, Handle).
+-spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), headers()) -> reference().
+put(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
+	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), headers(), request_options(), response_handler()) -> any().
-put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Opts, Handle) ->
-	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), headers()) -> reference().
+put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0) ->
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	ContentMD5 = base64:encode(erlang:md5(Val)),
@@ -96,11 +97,15 @@ put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0, Opts, Handl
 			{<<"content-type">>, ContentType},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
-	handle_response(Pid, gun:request(Pid, Method, Path, Headers1, Val), Timeout, Handle).
+	gun:request(Pid, Method, Path, Headers1, Val).
 
--spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
-delete(Pid, Id, Secret, Host, Path, Bucket, Headers, Opts, Handle) ->
-	request(Pid, Id, Secret, <<"DELETE">>, Host, Path, Bucket, Headers, Opts, Handle).
+-spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> reference().
+delete(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
+	request(Pid, Id, Secret, <<"DELETE">>, Host, Path, Bucket, Headers).
+
+-spec await(pid(), reference(), non_neg_integer(), response_handler()) -> any().
+await(Pid, Ref, Timeout, Handle) ->
+	await_response(Pid, Ref, Timeout, Handle).
 
 -spec signature_v2(iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
 signature_v2(Secret, Method, Resource, Date, Headers) ->
@@ -147,24 +152,26 @@ return_response_error_404(Xml) ->
 		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, parse_resource_bucket(R)}}
 	end.
 
+-spec default_request_timeout() -> non_neg_integer().
+default_request_timeout() ->
+	5000.
+
 %% =============================================================================
 %% Internal functions
 %% =============================================================================
 
--spec request(pid(), iodata(), iodata(), binary(), iodata(), headers(), request_options(), response_handler()) -> any().
-request(Pid, Id, Secret, Method, Path, Headers0, Opts, Handle) ->
-	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), headers()) -> reference().
+request(Pid, Id, Secret, Method, Path, Headers0) ->
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, Path, Date, Headers0),
 	Headers1 =
 		[	{<<"date">>, Date},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
-	handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
+	gun:request(Pid, Method, Path, Headers1).
 
--spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), headers(), request_options(), response_handler()) -> any().
-request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
-	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), headers()) -> reference().
+request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0) ->
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, Headers0),
 	Headers1 =
@@ -172,7 +179,7 @@ request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
 			{<<"host">>, [Bucket, <<$.>>, Host]},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
-	handle_response(Pid, gun:request(Pid, Method, Path, Headers1), Timeout, Handle).
+	gun:request(Pid, Method, Path, Headers1).
 
 %% This `request` function is used for requests that contain query string parameters,
 %% with or without subresource (empty binary `<<>>` is passed in that case).
@@ -182,9 +189,8 @@ request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0, Opts, Handle) ->
 %%
 %% For all other cases we use other `request` functions, passing subresource
 %% withing `Path` argument if needed.
--spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), qs(), iodata(), headers(), request_options(), response_handler()) -> any().
-request(Pid, Id, Secret, Method, Host, Path, SubRes, Qs, Bucket, Headers0, Opts, Handle) ->
-	Timeout = maps:get(request_timeout, Opts, ?DEFAULT_REQUEST_TIMEOUT),
+-spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), qs(), iodata(), headers()) -> reference().
+request(Pid, Id, Secret, Method, Host, Path, SubRes, Qs, Bucket, Headers0) ->
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	Sign = signature_v2(Secret, Method, resource([<<$/>>, Bucket, Path], SubRes), Date, Headers0),
 	Headers1 =
@@ -192,7 +198,7 @@ request(Pid, Id, Secret, Method, Host, Path, SubRes, Qs, Bucket, Headers0, Opts,
 			{<<"host">>, [Bucket, <<$.>>, Host]},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
-	handle_response(Pid, gun:request(Pid, Method, path(Path, SubRes, Qs), Headers1), Timeout, Handle).
+	gun:request(Pid, Method, path(Path, SubRes, Qs), Headers1).
 
 -spec path(iodata(), iodata(), qs()) -> iodata().
 path(Path, <<>>, [])   -> Path;
@@ -216,8 +222,8 @@ amz_headers([_|T], L) ->
 amz_headers([], L) ->
 	L.
 
--spec handle_response(pid(), reference(), non_neg_integer(), response_handler()) -> any().
-handle_response(Pid, Ref, Timeout, Handle) ->
+-spec await_response(pid(), reference(), non_neg_integer(), response_handler()) -> any().
+await_response(Pid, Ref, Timeout, Handle) ->
 	Mref = monitor(process, Pid),
 	receive
 		{gun_response, Pid, Ref, nofin, Status, Headers} ->
@@ -236,7 +242,7 @@ handle_response(Pid, Ref, Timeout, Handle) ->
 		{'DOWN', Mref, process, Pid, Reason} ->
 			exit(Reason);
 		_ ->
-			handle_response(Pid, Ref, Timeout, Handle)
+			await_response(Pid, Ref, Timeout, Handle)
 	after Timeout ->
 		demonitor(Mref, [flush]),
 		exit(timeout)
