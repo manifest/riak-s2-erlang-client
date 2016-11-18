@@ -125,10 +125,12 @@ object_copy(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
+	ExpectedBucket = iolist_to_binary(Bucket),
 	SourceKey = ?config(key, Config),
 	DestKey = riaks2c_cth:make_key(),
+	ExpectedDestKey = iolist_to_binary(DestKey),
 
-	{error, {bad_key, Bucket, DestKey}} = riaks2c_object:find(Pid, Bucket, DestKey, #{return_body => false}, Opts),
+	{error, {bad_key, ExpectedBucket, ExpectedDestKey}} = riaks2c_object:find(Pid, Bucket, DestKey, #{return_body => false}, Opts),
 	ok = riaks2c_object:copy(Pid, Bucket, DestKey, Bucket, SourceKey, Opts),
 	_ = riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts),
 	ok = riaks2c_object:remove(Pid, Bucket, DestKey, Opts),

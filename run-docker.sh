@@ -63,7 +63,7 @@ DOCKER_BUILD_BEGIN
 docker build --build-arg ULIMIT_FD=${ULIMIT_FD} -t ${DOCKER_CONTAINER_NAME} .
 docker run ${DOCKER_RUN_OPTIONS} \
 	-v $(pwd):${PROJECT_DIR} \
-	-p 8080:8080 \
 	--ulimit nofile=${ULIMIT_FD}:${ULIMIT_FD} \
+	-p 8080:8080 \
 	${DOCKER_CONTAINER_NAME} \
 	/bin/bash -c "set -x && cd ${PROJECT_DIR} && ${DOCKER_RUN_COMMAND} && set +x && ${DOCKER_CONTAINER_COMMAND}"

@@ -55,7 +55,7 @@ list(Pid, Bucket, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, list_qs(ReqOpts), Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
-		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -70,7 +70,7 @@ find(Pid, Bucket, Key, ReqOpts, Opts) ->
 	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
 	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Bin) -> Bin;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket, Key);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -85,7 +85,7 @@ get(Pid, Bucket, Key, ReqOpts, Opts) ->
 	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
 	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Bin) -> Bin;
-		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml, Bucket, Key);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -100,7 +100,7 @@ put(Pid, Bucket, Key, Val, ReqOpts, Opts) ->
 	ContentType = maps:get(content_type, ReqOpts, <<"application/octet-stream">>),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -116,7 +116,7 @@ copy(Pid, Bucket, Key, SourceBucket, SourceKey, ReqOpts, Opts) ->
 			| maps:get(headers, ReqOpts, []) ],
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -130,7 +130,7 @@ remove(Pid, Bucket, Key, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:delete(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers, ReqOpts, fun
 		(204, _Hs, _No) -> ok;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket, Key);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 

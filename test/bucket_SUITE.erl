@@ -118,6 +118,7 @@ bucket_policy_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
+	ExpectedBucket = iolist_to_binary(Bucket),
 	Policy =
 		#{<<"Version">> => <<"2008-10-17">>,
 			<<"Statement">> =>
@@ -125,15 +126,15 @@ bucket_policy_roundtrip(Config) ->
 						<<"Effect">> => <<"Allow">>,
 						<<"Principal">> => <<"*">>,
 						<<"Action">> => [<<"s3:GetObjectAcl">>, <<"s3:GetObject">>],
-						<<"Resource">> => <<"arn:aws:s3:::", (iolist_to_binary(Bucket))/binary, "/*">>,
+						<<"Resource">> => <<"arn:aws:s3:::", ExpectedBucket/binary, "/*">>,
 						<<"Condition">> =>
 							#{<<"IpAddress">> =>
 								#{<<"aws:SourceIp">> => <<"192.0.72.1/24">>}}} ]},
 
-	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket_policy:find(Pid, Bucket, Opts),
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:find(Pid, Bucket, Opts),
 	ok = riaks2c_bucket_policy:put(Pid, Bucket, Policy, Opts),
 	Policy = riaks2c_bucket_policy:get(Pid, Bucket, Opts),
 	ok = riaks2c_bucket_policy:remove(Pid, Bucket, Opts),
-	{error, {bad_bucket_policy, Bucket}} = riaks2c_bucket_policy:find(Pid, Bucket, Opts),
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:find(Pid, Bucket, Opts),
 	true.
 

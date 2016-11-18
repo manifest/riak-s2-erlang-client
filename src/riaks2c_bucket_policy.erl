@@ -50,7 +50,7 @@ find(Pid, Bucket, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -64,7 +64,7 @@ get(Pid, Bucket, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, Json) -> jsx:decode(Json, [return_maps]);
-		(404, _Hs, Xml)  -> riaks2c_http:throw_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml)  -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -83,7 +83,7 @@ put(Pid, Bucket, Policy, ReqOpts, Opts) ->
 	Val = jsx:encode(Policy),
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentType, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
@@ -100,6 +100,6 @@ remove(Pid, Bucket, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:delete(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Headers, ReqOpts, fun
 		(200, _Hs, _No) -> ok;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).

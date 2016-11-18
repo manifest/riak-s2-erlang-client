@@ -39,10 +39,8 @@
 	signature_v2/7,
 	access_token_v2/2,
 	throw_response_error/1,
-	throw_response_error_404/2,
-	throw_response_error_404/3,
-	return_response_error_404/2,
-	return_response_error_404/3
+	throw_response_error_404/1,
+	return_response_error_404/1
 ]).
 
 %% Definitions
@@ -127,46 +125,26 @@ access_token_v2(Id, Sign) ->
 throw_response_error(Xml) ->
 	exit(riaks2c_xsd:scan(Xml)).
 
--spec throw_response_error_404(iodata(), iodata()) -> no_return().
-throw_response_error_404(<<>>, Bucket) ->
-	error({bad_bucket, Bucket});
-throw_response_error_404(Xml, Bucket) ->
-	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
+-spec throw_response_error_404(iodata()) -> no_return().
+throw_response_error_404(<<>>) ->
+	error(unknown);
+throw_response_error_404(Xml) ->
+	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
-		<<"NoSuchBucket">>       -> error({bad_bucket, Bucket});
-		<<"NoSuchBucketPolicy">> -> error({bad_bucket_policy, Bucket})
+		<<"NoSuchKey">>          -> {Bucket, Key} = parse_resource_key(R), error({bad_key, Bucket, Key});
+		<<"NoSuchBucket">>       -> error({bad_bucket, parse_resource_bucket(R)});
+		<<"NoSuchBucketPolicy">> -> error({bad_bucket_policy, parse_resource_bucket(R)})
 	end.
 
--spec throw_response_error_404(iodata(), iodata(), iodata()) -> no_return().
-throw_response_error_404(<<>>, Bucket, Key) ->
-	error({bad_key, Bucket, Key});
-throw_response_error_404(Xml, Bucket, Key) ->
-	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
+-spec return_response_error_404(iodata()) -> {error, any()}.
+return_response_error_404(<<>>) ->
+	{error, unknown};
+return_response_error_404(Xml) ->
+	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
-		<<"NoSuchKey">>          -> error({bad_key, Bucket, Key});
-		<<"NoSuchBucket">>       -> error({bad_bucket, Bucket});
-		<<"NoSuchBucketPolicy">> -> error({bad_bucket_policy, Bucket})
-	end.
-
--spec return_response_error_404(iodata(), iodata()) -> {error, any()}.
-return_response_error_404(<<>>, Bucket) ->
-	{error, {bad_bucket, Bucket}};
-return_response_error_404(Xml, Bucket) ->
-	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
-	case Code of
-		<<"NoSuchBucket">>       -> {error, {bad_bucket, Bucket}};
-		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, Bucket}}
-	end.
-
--spec return_response_error_404(iodata(), iodata(), iodata()) -> {error, any()}.
-return_response_error_404(<<>>, Bucket, Key) ->
-	{error, {bad_key, Bucket, Key}};
-return_response_error_404(Xml, Bucket, Key) ->
-	#'Error'{'Code' = Code} = riaks2c_xsd:scan(Xml),
-	case Code of
-		<<"NoSuchKey">>          -> {error, {bad_key, Bucket, Key}};
-		<<"NoSuchBucket">>       -> {error, {bad_bucket, Bucket}};
-		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, Bucket}}
+		<<"NoSuchKey">>          -> {Bucket, Key} = parse_resource_key(R), {error, {bad_key, Bucket, Key}};
+		<<"NoSuchBucket">>       -> {error, {bad_bucket, parse_resource_bucket(R)}};
+		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, parse_resource_bucket(R)}}
 	end.
 
 %% =============================================================================
@@ -285,3 +263,19 @@ await_data(Pid, Ref, Timeout, Mref, Acc) ->
 		demonitor(Mref, [flush]),
 		exit(timeout)
 	end.
+
+-spec parse_resource_bucket(binary()) -> binary().
+parse_resource_bucket(<<$/, Rest/bits>>) ->
+	parse_resource_bucket(Rest, <<>>).
+
+-spec parse_resource_bucket(binary(), binary()) -> binary().
+parse_resource_bucket(<<$/, _/bits>>, Acc)   -> Acc;
+parse_resource_bucket(<<C, Rest/bits>>, Acc) -> parse_resource_bucket(Rest, <<Acc/binary, C>>).
+
+-spec parse_resource_key(binary()) -> {binary(), binary()}.
+parse_resource_key(<<$/, Rest/bits>>) ->
+	parse_resource_key(Rest, <<>>).
+
+-spec parse_resource_key(binary(), binary()) -> {binary(), binary()}.
+parse_resource_key(<<$/, Rest/bits>>, Acc) -> {Acc, Rest};
+parse_resource_key(<<C, Rest/bits>>, Acc)  -> parse_resource_key(Rest, <<Acc/binary, C>>).

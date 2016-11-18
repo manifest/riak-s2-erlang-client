@@ -75,6 +75,6 @@ remove(Pid, Bucket, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:delete(Pid, Id, Secret, Host, <<$/>>, Bucket, Headers, ReqOpts, fun
 		(204, _Hs, _No) -> ok;
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml, Bucket);
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
