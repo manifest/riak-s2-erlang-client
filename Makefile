@@ -9,7 +9,7 @@ DEPS = \
 
 dep_erlsom = git git://github.com/willemdj/erlsom.git 833fa057d199e0c9dc0232d560d2f742c57476b0
 dep_jsx = git git://github.com/talentdeficit/jsx.git v2.8.0
-dep_gun = git git://github.com/ninenines/gun.git 0414eede62946f995a5ab4879f9026548440199c
+dep_gun = git git://github.com/manifest/gun.git feature/reply-to
 
 TEST_DEPS = ct_helper
 dep_ct_helper = git git://github.com/ninenines/ct_helper.git master
