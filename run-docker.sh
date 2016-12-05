@@ -1,13 +1,14 @@
 #!/bin/bash
 
-PROJECT_DIR='/opt/sandbox/riaks2c-erlang-client'
+PROJECT='riak-s2-erlang-client'
+PROJECT_DIR="/opt/sandbox/${PROJECT}"
 DOCKER_ENV_CONFIG='.docker.env.config'
-DOCKER_RUN_OPTIONS=${DOCKER_RUN_OPTIONS:-'-ti'}
+DOCKER_RUN_OPTIONS=${DOCKER_RUN_OPTIONS:-'-ti --rm'}
+DOCKER_CONTAINER_NAME="sandbox/${PROJECT}"
 DOCKER_CONTAINER_COMMAND=${DOCKER_CONTAINER_COMMAND:-'/bin/bash'}
-DOCKER_CONTAINER_NAME='sandbox/riaks2c'
 ULIMIT_FD=262144
 
-function CREATE_USER() {
+function CREATE_RIAKS2_USER() {
 	local EMAIL="${1}"
 	local NAME="${2}"
 	read -r RESULT <<-EOF
@@ -40,9 +41,9 @@ read -r DOCKER_RUN_COMMAND <<-EOF
 	&& perl -pi -e 's/(?:(anonymous_user_creation = ).*)/\${1}on/' /etc/riak-cs/riak-cs.conf \
 	&& stanchion start \
 	&& riak-cs start \
-	&& ADMIN=(\$($(CREATE_USER 'admin@example.org' 'admin') | jq -r '.key_id,.key_secret')) \
+	&& ADMIN=(\$($(CREATE_RIAKS2_USER 'admin@example.org' 'admin') | jq -r '.key_id,.key_secret')) \
 	&& \$(ADD_USER_TO_DEVCONF 'admin' "\${ADMIN[0]}" "\${ADMIN[1]}") \
-	&& USER=(\$($(CREATE_USER 'user@example.org' 'user') | jq -r '.key_id,.key_secret')) \
+	&& USER=(\$($(CREATE_RIAKS2_USER 'user@example.org' 'user') | jq -r '.key_id,.key_secret')) \
 	&& \$(ADD_USER_TO_DEVCONF 'user' "\${USER[0]}" "\${USER[1]}") \
 	&& riak-cs stop \
 	&& stanchion stop \

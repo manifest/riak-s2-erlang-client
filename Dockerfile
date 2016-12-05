@@ -4,7 +4,7 @@ ARG RIAKKV_VERSION
 ARG RIAKCS_VERSION
 ARG STANCHION_VERSION
 ARG ULIMIT_FD
-ENV RIAKKV_VERSION=${RIAKKV_VERSION:-2.1.4}
+ENV RIAKKV_VERSION=${RIAKKV_VERSION:-2.2.0}
 ENV RIAKCS_VERSION=${RIAKCS_VERSION:-2.1.1}
 ENV STANCHION_VERSION=${STANCHION_VERSION:-2.1.1}
 ENV ULIMIT_FD=${ULIMIT_FD:-262144}
@@ -35,7 +35,7 @@ RUN set -xe \
 ## Installing Riak KV, Riak S2, Stanchion
 ## -----------------------------------------------------------------------------
 RUN set -xe \
-	&& add-apt-repository -s -y "deb https://packagecloud.io/basho/riak/ubuntu/ trusty main" \
+	&& add-apt-repository -s -y "deb https://packagecloud.io/basho/riak/ubuntu $(lsb_release -sc) main" \
 	&& add-apt-repository -s -y "deb https://packagecloud.io/basho/riak-cs/ubuntu trusty main" \
 	&& add-apt-repository -s -y "deb https://packagecloud.io/basho/stanchion/ubuntu trusty main" \
 	&& curl -fSL https://packagecloud.io/gpg.key 2>&1 | apt-key add -- \
@@ -102,4 +102,3 @@ RUN set -xe \
 	&& perl -pi -e 's/(listener = )127\.0\.0\.1/${1}0.0.0.0/' /etc/riak-cs/riak-cs.conf \
 	&& perl -pi -e 's/(riak_host = )127\.0\.0\.1/${1}0.0.0.0/' /etc/riak-cs/riak-cs.conf \
 	&& perl -pi -e 's/(stanchion_host = )127\.0\.0\.1/${1}0.0.0.0/' /etc/riak-cs/riak-cs.conf
-
