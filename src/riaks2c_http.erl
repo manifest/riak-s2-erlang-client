@@ -38,6 +38,7 @@
 	await/4,
 	await/5,
 	await_body/5,
+	fold_body/6,
 	signature_v2/5,
 	signature_v2/7,
 	access_token_v2/2,
@@ -54,6 +55,7 @@
 -type qs()               :: [{binary(), binary() | true}].
 -type headers()          :: headers().
 -type request_options()  :: map().
+-type body_handler()     :: fun((binary(), fin | nofin, any()) -> any()).
 -type response_handler() :: fun((100..999, headers(), iodata()) -> iodata()).
 
 -export_type([qs/0, headers/0, request_options/0, response_handler/0]).
@@ -139,13 +141,18 @@ await(Pid, Ref, Timeout, Mref, Handle) ->
 
 -spec await_body(pid(), reference(), non_neg_integer(), reference(), iodata()) -> iodata().
 await_body(Pid, Ref, Timeout, Mref, Acc) ->
+	fold_body(Pid, Ref, Timeout, Mref, Acc, fun accumulate_body/3).
+
+%% Be careful, 'Handle :: body_handler()' function must not fail.
+-spec fold_body(pid(), reference(), non_neg_integer(), reference(), iodata(), body_handler()) -> iodata().
+fold_body(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 	receive
-		{gun_data, Pid, Ref, nofin, Data} ->
-			await_body(Pid, Ref, Timeout, Mref, <<Acc/binary, Data/binary>>);
-		{gun_data, Pid, Ref, fin, Data} ->
+		{gun_data, Pid, Ref, nofin =IsFin, Data} ->
+			fold_body(Pid, Ref, Timeout, Mref, Handle(Data, IsFin, Acc), Handle);
+		{gun_data, Pid, Ref, fin =IsFin, Data} ->
 			demonitor(Mref, [flush]),
 			gun:flush(Ref),
-			<<Acc/binary, Data/binary>>;
+			Handle(Data, IsFin, Acc);
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
 			gun:flush(Ref),
@@ -293,3 +300,7 @@ parse_resource_key(<<$/, Rest/bits>>) ->
 -spec parse_resource_key(binary(), binary()) -> {binary(), binary()}.
 parse_resource_key(<<$/, Rest/bits>>, Acc) -> {Acc, Rest};
 parse_resource_key(<<C, Rest/bits>>, Acc)  -> parse_resource_key(Rest, <<Acc/binary, C>>).
+
+-spec accumulate_body(binary(), fin | nofin, binary()) -> binary().
+accumulate_body(Data, _IsFin, Acc) ->
+	<<Acc/binary, Data/binary>>.
