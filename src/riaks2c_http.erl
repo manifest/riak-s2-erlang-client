@@ -37,7 +37,7 @@
 	delete/7,
 	await/4,
 	await/5,
-	await_body/5,
+	await_body/4,
 	fold_body/6,
 	signature_v2/5,
 	signature_v2/7,
@@ -116,7 +116,7 @@ await(Pid, Ref, Timeout, Handle) ->
 await(Pid, Ref, Timeout, Mref, Handle) ->
 	receive
 		{gun_response, Pid, Ref, nofin, Status, Headers} ->
-			Data = await_body(Pid, Ref, Timeout, Mref, <<>>),
+			Data = await_body(Pid, Ref, Timeout, Mref),
 			Handle(Status, Headers, Data);
 		{gun_response, Pid, Ref, fin, Status, Headers} ->
 			demonitor(Mref, [flush]),
@@ -139,9 +139,9 @@ await(Pid, Ref, Timeout, Mref, Handle) ->
 		exit(timeout)
 	end.
 
--spec await_body(pid(), reference(), non_neg_integer(), reference(), iodata()) -> iodata().
-await_body(Pid, Ref, Timeout, Mref, Acc) ->
-	fold_body(Pid, Ref, Timeout, Mref, Acc, fun accumulate_body/3).
+-spec await_body(pid(), reference(), non_neg_integer(), reference()) -> iodata().
+await_body(Pid, Ref, Timeout, Mref) ->
+	fold_body(Pid, Ref, Timeout, Mref, <<>>, fun accumulate_body/3).
 
 %% Be careful, 'Handle :: body_handler()' function must not fail.
 -spec fold_body(pid(), reference(), non_neg_integer(), reference(), iodata(), body_handler()) -> iodata().
