@@ -36,6 +36,8 @@
 	put/9,
 	delete/7,
 	await/4,
+	await/5,
+	await_body/5,
 	signature_v2/5,
 	signature_v2/7,
 	access_token_v2/2,
@@ -105,7 +107,61 @@ delete(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
 
 -spec await(pid(), reference(), non_neg_integer(), response_handler()) -> any().
 await(Pid, Ref, Timeout, Handle) ->
-	await_response(Pid, Ref, Timeout, Handle).
+	Mref = monitor(process, Pid),
+	await(Pid, Ref, Timeout, Mref, Handle).
+
+-spec await(pid(), reference(), non_neg_integer(), reference(), response_handler()) -> any().
+await(Pid, Ref, Timeout, Mref, Handle) ->
+	receive
+		{gun_response, Pid, Ref, nofin, Status, Headers} ->
+			Data = await_body(Pid, Ref, Timeout, Mref, <<>>),
+			Handle(Status, Headers, Data);
+		{gun_response, Pid, Ref, fin, Status, Headers} ->
+			demonitor(Mref, [flush]),
+			gun:flush(Ref),
+			Handle(Status, Headers, <<>>);
+		{gun_error, Pid, Ref, Reason} ->
+			demonitor(Mref, [flush]),
+			gun:flush(Ref),
+			exit(Reason);
+		{gun_error, Pid, Reason} ->
+			demonitor(Mref, [flush]),
+			gun:flush(Ref),
+			exit(Reason);
+		{'DOWN', Mref, process, Pid, Reason} ->
+			gun:flush(Ref),
+			exit(Reason)
+	after Timeout ->
+		demonitor(Mref, [flush]),
+		gun:flush(Ref),
+		exit(timeout)
+	end.
+
+-spec await_body(pid(), reference(), non_neg_integer(), reference(), iodata()) -> iodata().
+await_body(Pid, Ref, Timeout, Mref, Acc) ->
+	receive
+		{gun_data, Pid, Ref, nofin, Data} ->
+			await_body(Pid, Ref, Timeout, Mref, <<Acc/binary, Data/binary>>);
+		{gun_data, Pid, Ref, fin, Data} ->
+			demonitor(Mref, [flush]),
+			gun:flush(Ref),
+			<<Acc/binary, Data/binary>>;
+		{gun_error, Pid, Ref, Reason} ->
+			demonitor(Mref, [flush]),
+			gun:flush(Ref),
+			exit(Reason);
+		{gun_error, Pid, Reason} ->
+			demonitor(Mref, [flush]),
+			gun:flush(Ref),
+			exit(Reason);
+		{'DOWN', Mref, process, Pid, Reason} ->
+			gun:flush(Ref),
+			exit(Reason)
+	after Timeout ->
+		demonitor(Mref, [flush]),
+		gun:flush(Ref),
+		exit(timeout)
+	end.
 
 -spec signature_v2(iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
 signature_v2(Secret, Method, Resource, Date, Headers) ->
@@ -221,60 +277,6 @@ amz_headers([_|T], L) ->
 	amz_headers(T, L);
 amz_headers([], L) ->
 	L.
-
--spec await_response(pid(), reference(), non_neg_integer(), response_handler()) -> any().
-await_response(Pid, Ref, Timeout, Handle) ->
-	Mref = monitor(process, Pid),
-	receive
-		{gun_response, Pid, Ref, nofin, Status, Headers} ->
-			Data = await_data(Pid, Ref, Timeout, Mref, <<>>),
-			demonitor(Mref, [flush]),
-			gun:flush(Ref),
-			Handle(Status, Headers, Data);
-		{gun_response, Pid, Ref, fin, Status, Headers} ->
-			demonitor(Mref, [flush]),
-			gun:flush(Ref),
-			Handle(Status, Headers, <<>>);
-		{gun_error, Pid, Ref, Reason} ->
-			demonitor(Mref, [flush]),
-			gun:flush(Ref),
-			exit(Reason);
-		{gun_error, Pid, Reason} ->
-			demonitor(Mref, [flush]),
-			gun:flush(Ref),
-			exit(Reason);
-		{'DOWN', Mref, process, Pid, Reason} ->
-			gun:flush(Ref),
-			exit(Reason)
-	after Timeout ->
-		demonitor(Mref, [flush]),
-		gun:flush(Ref),
-		exit(timeout)
-	end.
-
--spec await_data(pid(), reference(), non_neg_integer(), reference(), iodata()) -> iodata().
-await_data(Pid, Ref, Timeout, Mref, Acc) ->
-	receive
-		{gun_data, Pid, Ref, nofin, Data} ->
-			await_data(Pid, Ref, Timeout, Mref, <<Acc/binary, Data/binary>>);
-		{gun_data, Pid, Ref, fin, Data} ->
-			<<Acc/binary, Data/binary>>;
-		{gun_error, Pid, Ref, Reason} ->
-			demonitor(Mref, [flush]),
-			gun:flush(Ref),
-			exit(Reason);
-		{gun_error, Pid, Reason} ->
-			demonitor(Mref, [flush]),
-			gun:flush(Ref),
-			exit(Reason);
-		{'DOWN', Mref, process, Pid, Reason} ->
-			gun:flush(Ref),
-			exit(Reason)
-	after Timeout ->
-		demonitor(Mref, [flush]),
-		gun:flush(Ref),
-		exit(timeout)
-	end.
 
 -spec parse_resource_bucket(binary()) -> binary().
 parse_resource_bucket(<<$/, Rest/bits>>) ->
