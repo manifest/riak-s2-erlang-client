@@ -100,6 +100,8 @@ await_find(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Bin) -> Bin;
+		(206, _Hs, Bin) -> Bin;
+		(416, _Hs, _No) -> {error, bad_range};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
@@ -124,6 +126,8 @@ await_get(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Bin) -> Bin;
+		(206, _Hs, Bin) -> Bin;
+		(416, _Hs, _No) -> exit(bad_range);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).

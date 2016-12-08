@@ -100,6 +100,26 @@ object_list(Config) ->
 	false = IsObjectExist(),
 	true.
 
+object_range_request(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = ?config(key, Config),
+
+	ReqOpts = #{headers => [{<<"range">>, <<"bytes=0-1">>}]},
+	2 = byte_size(riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))),
+	true.
+
+object_range_request_error(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = ?config(key, Config),
+
+	ReqOpts = #{headers => [{<<"range">>, <<"invalid">>}]},
+	{error, bad_range} = riaks2c_object:await_find(Pid, riaks2c_object:find(Pid, Bucket, Key, ReqOpts, Opts)),
+	true.
+
 object_list_qs(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),
