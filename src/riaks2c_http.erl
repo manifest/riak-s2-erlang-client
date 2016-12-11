@@ -55,13 +55,14 @@
 %% Types
 -type qs()               :: [{binary(), binary() | true}].
 -type headers()          :: [{binary(), iodata()}].
--type request_options()  :: map().
 -type status()           :: 100..999.
--type head_handler()     :: fun((fin | nofin, status(), headers()) -> any()).
--type body_handler()     :: fun((binary(), fin | nofin, any()) -> any()).
+-type fin()              :: fin | nofin.
+-type head_handler()     :: fun((fin(), status(), headers()) -> any()).
+-type body_handler()     :: fun((binary(), fin(), any()) -> any()).
 -type response_handler() :: fun((status(), headers(), iodata()) -> iodata()).
+-type request_options()  :: map().
 
--export_type([qs/0, headers/0, status/0, request_options/0, response_handler/0]).
+-export_type([qs/0, headers/0, status/0, fin/0, head_handler/0, body_handler/0, response_handler/0, request_options/0]).
 
 %% =============================================================================
 %% API
@@ -316,6 +317,6 @@ parse_resource_key(<<$/, Rest/bits>>) ->
 parse_resource_key(<<$/, Rest/bits>>, Acc) -> {Acc, Rest};
 parse_resource_key(<<C, Rest/bits>>, Acc)  -> parse_resource_key(Rest, <<Acc/binary, C>>).
 
--spec accumulate_body(binary(), fin | nofin, binary()) -> binary().
+-spec accumulate_body(binary(), fin(), binary()) -> binary().
 accumulate_body(Data, _IsFin, Acc) ->
 	<<Acc/binary, Data/binary>>.
