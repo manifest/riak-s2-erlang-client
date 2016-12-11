@@ -75,11 +75,10 @@ list(Pid, Bucket, ReqOpts, Opts) ->
 
 -spec expect_list(pid(), reference()) -> 'ListBucketResult'().
 expect_list(Pid, Ref) ->
-	expect_list(Pid, Ref, #{}).
+	expect_list(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec expect_list(pid(), reference(), riaks2c_http:request_options()) -> 'ListBucketResult'().
-expect_list(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec expect_list(pid(), reference(), non_neg_integer()) -> 'ListBucketResult'().
+expect_list(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
@@ -98,16 +97,15 @@ head(Pid, Bucket, Key, ReqOpts, Opts) ->
 
 -spec expect_head(pid(), reference()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
 expect_head(Pid, Ref) ->
-	expect_head(Pid, Ref, #{}).
+	expect_head(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec expect_head(pid(), reference(), riaks2c_http:request_options()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
-expect_head(Pid, Ref, ReqOpts) ->
+-spec expect_head(pid(), reference(), non_neg_integer()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
+expect_head(Pid, Ref, Timeout) ->
 	Mref = monitor(process, Pid),
-	expect_head(Pid, Ref, ReqOpts, Mref).
+	expect_head(Pid, Ref, Timeout, Mref).
 
--spec expect_head(pid(), reference(), riaks2c_http:request_options(), reference()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
-expect_head(Pid, Ref, ReqOpts, Mref) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec expect_head(pid(), reference(), non_neg_integer(), reference()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
+expect_head(Pid, Ref, Timeout, Mref) ->
 	riaks2c_http:await_head(
 		Pid, Ref, Timeout, Mref,
 		fun
@@ -124,16 +122,15 @@ expect_head(Pid, Ref, ReqOpts, Mref) ->
 
 -spec expect_body(pid(), reference()) -> iodata().
 expect_body(Pid, Ref) ->
-	expect_body(Pid, Ref, #{}).
+	expect_body(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec expect_body(pid(), reference(), riaks2c_http:request_options()) -> iodata().
-expect_body(Pid, Ref, ReqOpts) ->
+-spec expect_body(pid(), reference(), non_neg_integer()) -> iodata().
+expect_body(Pid, Ref, Timeout) ->
 	Mref = monitor(process, Pid),
-	expect_body(Pid, Ref, ReqOpts, Mref).
+	expect_body(Pid, Ref, Timeout, Mref).
 
--spec expect_body(pid(), reference(), riaks2c_http:request_options(), reference()) -> iodata().
-expect_body(Pid, Ref, ReqOpts, Mref) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec expect_body(pid(), reference(), non_neg_integer(), reference()) -> iodata().
+expect_body(Pid, Ref, Timeout, Mref) ->
 	riaks2c_http:await_body(Pid, Ref, Timeout, Mref).
 
 -spec get(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
@@ -148,11 +145,10 @@ get(Pid, Bucket, Key, ReqOpts, Opts) ->
 
 -spec await_get(pid(), reference()) -> {ok, iodata()} | {error, any()}.
 await_get(Pid, Ref) ->
-	await_get(Pid, Ref, #{}).
+	await_get(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec await_get(pid(), reference(), riaks2c_http:request_options()) -> {ok, iodata()} | {error, any()}.
-await_get(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec await_get(pid(), reference(), non_neg_integer()) -> {ok, iodata()} | {error, any()}.
+await_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Bin) -> Bin;
 		(206, _Hs, Bin) -> Bin;
@@ -163,11 +159,10 @@ await_get(Pid, Ref, ReqOpts) ->
 
 -spec expect_get(pid(), reference()) -> iodata().
 expect_get(Pid, Ref) ->
-	expect_get(Pid, Ref, #{}).
+	expect_get(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec expect_get(pid(), reference(), riaks2c_http:request_options()) -> iodata().
-expect_get(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec expect_get(pid(), reference(), non_neg_integer()) -> iodata().
+expect_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Bin) -> Bin;
 		(206, _Hs, Bin) -> Bin;
@@ -187,13 +182,12 @@ put(Pid, Bucket, Key, Val, ReqOpts, Opts) ->
 	ContentType = maps:get(content_type, ReqOpts, <<"application/octet-stream">>),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers).
 
--spec await_put(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
-await_put(Pid, Ref) ->
-	await_put(Pid, Ref, #{}).
-
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
-await_put(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+await_put(Pid, Ref) ->
+	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_put(pid(), reference(), non_neg_integer()) -> ok | {error, any()}.
+await_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
@@ -212,20 +206,19 @@ copy(Pid, Bucket, Key, SourceBucket, SourceKey, ReqOpts, Opts) ->
 			| maps:get(headers, ReqOpts, []) ],
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers).
 
--spec await_copy(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
-await_copy(Pid, Ref) ->
-	await_copy(Pid, Ref, #{}).
-
 -spec await_copy(pid(), reference()) -> ok | {error, any()}.
-await_copy(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+await_copy(Pid, Ref) ->
+	await_copy(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_copy(pid(), reference(), non_neg_integer()) -> ok | {error, any()}.
+await_copy(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec remove(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
+-spec remove(pid(), iodata(), iodata(), riaks2c_http:request_options()) -> reference().
 remove(Pid, Bucket, Key, Opts) ->
 	remove(Pid, Bucket, Key, #{}, Opts).
 
@@ -235,13 +228,12 @@ remove(Pid, Bucket, Key, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:delete(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers).
 
--spec await_remove(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
-await_remove(Pid, Ref) ->
-	await_remove(Pid, Ref, #{}).
-
 -spec await_remove(pid(), reference()) -> ok | {error, any()}.
-await_remove(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+await_remove(Pid, Ref) ->
+	await_remove(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_remove(pid(), reference(), non_neg_integer()) -> ok | {error, any()}.
+await_remove(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);

@@ -55,11 +55,10 @@ get(Pid, Bucket, Key, ReqOpts, Opts) ->
 
 -spec await_get(pid(), reference()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 await_get(Pid, Ref) ->
-	await_get(Pid, Ref, #{}).
+	await_get(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec await_get(pid(), reference(), riaks2c_http:request_options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
-await_get(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec await_get(pid(), reference(), non_neg_integer()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
+await_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
@@ -68,11 +67,10 @@ await_get(Pid, Ref, ReqOpts) ->
 
 -spec expect_get(pid(), reference()) -> 'AccessControlPolicy'().
 expect_get(Pid, Ref) ->
-	expect_get(Pid, Ref, #{}).
+	expect_get(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec expect_get(pid(), reference(), riaks2c_http:request_options()) -> 'AccessControlPolicy'().
-expect_get(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+-spec expect_get(pid(), reference(), non_neg_integer()) -> 'AccessControlPolicy'().
+expect_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
@@ -91,13 +89,12 @@ put(Pid, Bucket, Key, ACL, ReqOpts, Opts) ->
 	Val = riaks2c_xsd:write(ACL),
 	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Val, ContentType, Headers).
 
--spec await_put(pid(), reference(), riaks2c_http:request_options()) -> ok | {error, any()}.
-await_put(Pid, Ref) ->
-	await_put(Pid, Ref, #{}).
-
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
-await_put(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+await_put(Pid, Ref) ->
+	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_put(pid(), reference(), non_neg_integer()) -> ok | {error, any()}.
+await_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
