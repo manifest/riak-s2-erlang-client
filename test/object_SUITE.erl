@@ -100,6 +100,26 @@ object_list(Config) ->
 	false = IsObjectExist(),
 	true.
 
+object_head(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = ?config(key, Config),
+
+	{200, _Hs} = riaks2c_object:expect_head(Pid, riaks2c_object:head(Pid, Bucket, Key, Opts)),
+	true.
+
+object_headbody(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = ?config(key, Config),
+
+	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
+	{200, _Hs} = riaks2c_object:expect_head(Pid, Ref),
+	_Body = riaks2c_object:expect_body(Pid, Ref),
+	true.
+
 object_range_request(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(user, Config),

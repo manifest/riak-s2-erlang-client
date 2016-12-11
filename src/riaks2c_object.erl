@@ -36,6 +36,9 @@
 	expect_head/2,
 	expect_head/3,
 	expect_head/4,
+	expect_body/2,
+	expect_body/3,
+	expect_body/4,
 	get/4,
 	get/5,
 	await_get/2,
@@ -109,13 +112,29 @@ expect_head(Pid, Ref, ReqOpts, Mref) ->
 		Pid, Ref, Timeout, Mref,
 		fun
 			(nofin, Status, Headers) ->
-				%% Assuming we're using this function with riaks2c_object:get/{4,5}
+				%% Assuming we're using this function with riaks2c_object:get/{4,5},
+				%% and riaks2c_object:expect_body/{2,3,4} will be called
+				%% to flush stream messages and demonitor the stream process.
 				{Status, Headers};
 			(fin, Status, Headers) ->
 				demonitor(Mref, [flush]),
 				gun:flush(Ref),
 				{Status, Headers}
 		end).
+
+-spec expect_body(pid(), reference()) -> iodata().
+expect_body(Pid, Ref) ->
+	expect_body(Pid, Ref, #{}).
+
+-spec expect_body(pid(), reference(), riaks2c_http:request_options()) -> iodata().
+expect_body(Pid, Ref, ReqOpts) ->
+	Mref = monitor(process, Pid),
+	expect_body(Pid, Ref, ReqOpts, Mref).
+
+-spec expect_body(pid(), reference(), riaks2c_http:request_options(), reference()) -> iodata().
+expect_body(Pid, Ref, ReqOpts, Mref) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+	riaks2c_http:await_body(Pid, Ref, Timeout, Mref).
 
 -spec get(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
 get(Pid, Bucket, Key, Opts) ->
