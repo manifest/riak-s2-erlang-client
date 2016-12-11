@@ -31,6 +31,11 @@
 	list/4,
 	expect_list/2,
 	expect_list/3,
+	head/4,
+	head/5,
+	expect_head/2,
+	expect_head/3,
+	expect_head/4,
 	get/4,
 	get/5,
 	await_get/2,
@@ -78,6 +83,40 @@ expect_list(Pid, Ref, ReqOpts) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec head(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
+head(Pid, Bucket, Key, Opts) ->
+	head(Pid, Bucket, Key, #{}, Opts).
+
+-spec head(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
+head(Pid, Bucket, Key, ReqOpts, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:head(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers).
+
+-spec expect_head(pid(), reference()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
+expect_head(Pid, Ref) ->
+	expect_head(Pid, Ref, #{}).
+
+-spec expect_head(pid(), reference(), riaks2c_http:request_options()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
+expect_head(Pid, Ref, ReqOpts) ->
+	Mref = monitor(process, Pid),
+	expect_head(Pid, Ref, ReqOpts, Mref).
+
+-spec expect_head(pid(), reference(), riaks2c_http:request_options(), reference()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
+expect_head(Pid, Ref, ReqOpts, Mref) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+	riaks2c_http:await_head(
+		Pid, Ref, Timeout, Mref,
+		fun
+			(nofin, Status, Headers) ->
+				%% Assuming we're using this function with riaks2c_object:get/{4,5}
+				{Status, Headers};
+			(fin, Status, Headers) ->
+				demonitor(Mref, [flush]),
+				gun:flush(Ref),
+				{Status, Headers}
+		end).
+
 -spec get(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
 get(Pid, Bucket, Key, Opts) ->
 	get(Pid, Bucket, Key, #{}, Opts).
@@ -86,8 +125,7 @@ get(Pid, Bucket, Key, Opts) ->
 get(Pid, Bucket, Key, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
-	MethodFn = case maps:get(return_body, Opts, true) of true -> get; _ -> head end,
-	riaks2c_http:MethodFn(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers).
+	riaks2c_http:get(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Headers).
 
 -spec await_get(pid(), reference()) -> {ok, iodata()} | {error, any()}.
 await_get(Pid, Ref) ->
