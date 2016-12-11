@@ -86,7 +86,7 @@ object_list(Config) ->
 	ExpectKey = iolist_to_binary(Key),
 	IsObjectExist =
 		fun() ->
-			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:await_list(Pid, riaks2c_object:list(Pid, Bucket, Opts)),
+			#'ListBucketResult'{'Contents' = Objects} = riaks2c_object:expect_list(Pid, riaks2c_object:list(Pid, Bucket, Opts)),
 			case Objects of
 				undefined -> false;
 				_         -> lists:any(fun(#'ListEntry'{'Key' = Kval}) -> Kval =:= ExpectKey end, Objects)
@@ -107,7 +107,7 @@ object_range_request(Config) ->
 	Key = ?config(key, Config),
 
 	ReqOpts = #{headers => [{<<"range">>, <<"bytes=0-1">>}]},
-	2 = byte_size(riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))),
+	2 = byte_size(riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))),
 	true.
 
 object_range_request_error(Config) ->
@@ -117,7 +117,7 @@ object_range_request_error(Config) ->
 	Key = ?config(key, Config),
 
 	ReqOpts = #{headers => [{<<"range">>, <<"invalid">>}]},
-	{error, bad_range} = riaks2c_object:await_find(Pid, riaks2c_object:find(Pid, Bucket, Key, ReqOpts, Opts)),
+	{error, bad_range} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts)),
 	true.
 
 object_list_qs(Config) ->
@@ -135,7 +135,7 @@ object_list_qs(Config) ->
 
 	[ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts)) || Key <- Keys],
 	[begin
-		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:await_list(Pid, riaks2c_object:list(Pid, Bucket, ReqOpts, Opts)),
+		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:expect_list(Pid, riaks2c_object:list(Pid, Bucket, ReqOpts, Opts)),
 		N = length(Total)
 	end || {N, ReqOpts} <- Tests],
 	[riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)) || Key <- Keys],
@@ -150,9 +150,9 @@ object_copy(Config) ->
 	DestKey = riaks2c_cth:make_key(),
 	ExpectedDestKey = iolist_to_binary(DestKey),
 
-	{error, {bad_key, ExpectedBucket, ExpectedDestKey}} = riaks2c_object:await_find(Pid, riaks2c_object:find(Pid, Bucket, DestKey, #{return_body => false}, Opts)),
+	{error, {bad_key, ExpectedBucket, ExpectedDestKey}} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts)),
 	ok = riaks2c_object:await_copy(Pid, riaks2c_object:copy(Pid, Bucket, DestKey, Bucket, SourceKey, Opts)),
-	_ = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts)),
+	_ = riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts)),
 	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, DestKey, Opts)),
 	true.
 
@@ -162,7 +162,7 @@ object_acl_roundtrip(Config) ->
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
-	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:await_list(Pid, riaks2c_bucket:list(Pid, #{}, Opts)),
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, #{}, Opts)),
 	ExpectedPermission = <<"READ_ACP">>,
 	ACL =
 		#'AccessControlPolicy'{
@@ -174,11 +174,11 @@ object_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_object_acl:await_find(Pid, riaks2c_object_acl:find(Pid, Bucket, Key, Opts)),
+	{ok, _} = riaks2c_object_acl:await_get(Pid, riaks2c_object_acl:get(Pid, Bucket, Key, Opts)),
 	ok = riaks2c_object_acl:await_put(Pid, riaks2c_object_acl:put(Pid, Bucket, Key, ACL, Opts)),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:await_get(Pid, riaks2c_object_acl:get(Pid, Bucket, Key, Opts)),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:expect_get(Pid, riaks2c_object_acl:get(Pid, Bucket, Key, Opts)),
 
 	true.

@@ -29,8 +29,8 @@
 -export([
 	list/2,
 	list/3,
-	await_list/2,
-	await_list/3,
+	expect_list/2,
+	expect_list/3,
 	put/3,
 	put/4,
 	await_put/2,
@@ -55,12 +55,12 @@ list(Pid, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, <<$/>>, Headers).
 
--spec await_list(pid(), reference()) -> 'ListAllMyBucketsResult'().
-await_list(Pid, Ref) ->
-	await_list(Pid, Ref, #{}).
+-spec expect_list(pid(), reference()) -> 'ListAllMyBucketsResult'().
+expect_list(Pid, Ref) ->
+	expect_list(Pid, Ref, #{}).
 
--spec await_list(pid(), reference(), riaks2c_http:request_options()) -> 'ListAllMyBucketsResult'().
-await_list(Pid, Ref, ReqOpts) ->
+-spec expect_list(pid(), reference(), riaks2c_http:request_options()) -> 'ListAllMyBucketsResult'().
+expect_list(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);

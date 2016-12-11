@@ -73,7 +73,7 @@ bucket_list(Config) ->
 			#'ListAllMyBucketsResult'{
 				'Buckets' =
 					#'ListAllMyBucketsList'{
-						'Bucket' = Buckets}} = riaks2c_bucket:await_list(Pid, riaks2c_bucket:list(Pid, Opts)),
+						'Bucket' = Buckets}} = riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, Opts)),
 
 			case Buckets of
 				undefined -> false;
@@ -93,7 +93,7 @@ bucket_acl_roundtrip(Config) ->
 	Opts = ?config(user, Config),
 	Bucket = ?config(bucket, Config),
 
-	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:await_list(Pid, riaks2c_bucket:list(Pid, Opts)),
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, Opts)),
 	ExpectedPermission = <<"READ">>,
 	ACL =
 		#'AccessControlPolicy'{
@@ -105,12 +105,12 @@ bucket_acl_roundtrip(Config) ->
 								'Grantee' = ExpectedOwner,
 								'Permission' = ExpectedPermission } ]}},
 
-	{ok, _} = riaks2c_bucket_acl:await_find(Pid, riaks2c_bucket_acl:find(Pid, Bucket, Opts)),
+	{ok, _} = riaks2c_bucket_acl:await_get(Pid, riaks2c_bucket_acl:get(Pid, Bucket, Opts)),
 	ok = riaks2c_bucket_acl:await_put(Pid, riaks2c_bucket_acl:put(Pid, Bucket, ACL, Opts)),
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:await_get(Pid, riaks2c_bucket_acl:get(Pid, Bucket, Opts)),
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:expect_get(Pid, riaks2c_bucket_acl:get(Pid, Bucket, Opts)),
 
 	true.
 
@@ -131,9 +131,9 @@ bucket_policy_roundtrip(Config) ->
 							#{<<"IpAddress">> =>
 								#{<<"aws:SourceIp">> => <<"192.0.72.1/24">>}}} ]},
 
-	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_find(Pid, riaks2c_bucket_policy:find(Pid, Bucket, Opts)),
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
 	ok = riaks2c_bucket_policy:await_put(Pid, riaks2c_bucket_policy:put(Pid, Bucket, Policy, Opts)),
-	Policy = riaks2c_bucket_policy:await_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
+	Policy = riaks2c_bucket_policy:expect_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
 	ok = riaks2c_bucket_policy:await_remove(Pid, riaks2c_bucket_policy:remove(Pid, Bucket, Opts)),
-	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_find(Pid, riaks2c_bucket_policy:find(Pid, Bucket, Opts)),
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
 	true.

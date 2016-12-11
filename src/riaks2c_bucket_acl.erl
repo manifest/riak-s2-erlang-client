@@ -27,14 +27,12 @@
 
 %% API
 -export([
-	find/3,
-	find/4,
-	await_find/2,
-	await_find/3,
 	get/3,
 	get/4,
 	await_get/2,
 	await_get/3,
+	expect_get/2,
+	expect_get/3,
 	put/4,
 	put/5,
 	await_put/2,
@@ -44,29 +42,6 @@
 %% =============================================================================
 %% API
 %% =============================================================================
-
--spec find(pid(), iodata(), riaks2c:options()) -> reference().
-find(Pid, Bucket, Opts) ->
-	find(Pid, Bucket, #{}, Opts).
-
--spec find(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
-find(Pid, Bucket, ReqOpts, Opts) ->
-	#{id := Id, secret := Secret, host := Host} = Opts,
-	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers).
-
--spec await_find(pid(), reference()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
-await_find(Pid, Ref) ->
-	await_find(Pid, Ref, #{}).
-
--spec await_find(pid(), reference(), riaks2c_http:request_options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
-await_find(Pid, Ref, ReqOpts) ->
-	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
-	riaks2c_http:await(Pid, Ref, Timeout, fun
-		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-	end).
 
 -spec get(pid(), iodata(), riaks2c:options()) -> reference().
 get(Pid, Bucket, Opts) ->
@@ -78,12 +53,25 @@ get(Pid, Bucket, ReqOpts, Opts) ->
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Headers).
 
--spec await_get(pid(), reference()) -> 'AccessControlPolicy'().
+-spec await_get(pid(), reference()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 await_get(Pid, Ref) ->
 	await_get(Pid, Ref, #{}).
 
--spec await_get(pid(), reference(), riaks2c_http:request_options()) -> 'AccessControlPolicy'().
+-spec await_get(pid(), reference(), riaks2c_http:request_options()) -> {ok, 'AccessControlPolicy'()} | {error, any()}.
 await_get(Pid, Ref, ReqOpts) ->
+	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+-spec expect_get(pid(), reference()) -> 'AccessControlPolicy'().
+expect_get(Pid, Ref) ->
+	expect_get(Pid, Ref, #{}).
+
+-spec expect_get(pid(), reference(), riaks2c_http:request_options()) -> 'AccessControlPolicy'().
+expect_get(Pid, Ref, ReqOpts) ->
 	Timeout = maps:get(request_timeout, ReqOpts, riaks2c_http:default_request_timeout()),
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
