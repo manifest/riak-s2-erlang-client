@@ -160,7 +160,7 @@ await_body(Pid, Ref, Timeout, Mref) ->
 	fold_body(Pid, Ref, Timeout, Mref, <<>>, fun accumulate_body/3).
 
 %% Be careful, 'Handle :: body_handler()' function must not fail.
--spec fold_body(pid(), reference(), non_neg_integer(), reference(), iodata(), body_handler()) -> iodata().
+-spec fold_body(pid(), reference(), non_neg_integer(), reference(), any(), body_handler()) -> any().
 fold_body(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 	receive
 		{gun_data, Pid, Ref, nofin =IsFin, Data} ->
