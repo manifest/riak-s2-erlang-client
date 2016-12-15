@@ -46,7 +46,7 @@ init_per_suite(Config) ->
 %% - Creating an object for all testcases but 'object_list', 'object_list_qs'
 init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, #{}, Opts)),
 	case Test of
@@ -63,7 +63,7 @@ init_per_testcase(Test, Config) ->
 %% - Removing the recently created object for all testcases but 'object_list', 'object_list_qs'
 end_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	case Test of
 		object_list_qs -> ok;
@@ -80,7 +80,7 @@ end_per_testcase(Test, Config) ->
 
 object_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = riaks2c_cth:make_key(),
 	ExpectKey = iolist_to_binary(Key),
@@ -102,7 +102,7 @@ object_list(Config) ->
 
 object_head(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
@@ -111,7 +111,7 @@ object_head(Config) ->
 
 object_headbody(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
@@ -122,7 +122,7 @@ object_headbody(Config) ->
 
 object_range_request(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
@@ -132,7 +132,7 @@ object_range_request(Config) ->
 
 object_range_request_error(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
@@ -142,7 +142,7 @@ object_range_request_error(Config) ->
 
 object_list_qs(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Keys =
 		[[<<"group_a_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 5)]
@@ -163,7 +163,7 @@ object_list_qs(Config) ->
 
 object_copy(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	ExpectedBucket = iolist_to_binary(Bucket),
 	SourceKey = ?config(key, Config),
@@ -178,7 +178,7 @@ object_copy(Config) ->
 
 object_acl_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 

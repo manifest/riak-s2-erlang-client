@@ -16,7 +16,7 @@
 
 -spec init_config() -> list().
 init_config() ->
-	{ok, Config} = file:consult(root_path(<<".docker.env.config">>)),
+	{ok, Config} = file:consult(root_path(<<".develop-environment">>)),
 	Config.
 
 -spec root_path(binary()) -> binary().
@@ -27,7 +27,7 @@ root_path(Path) ->
 -spec gun_open(list()) -> pid().
 gun_open(Config) ->
 	#{host := Host,
-		port := Port} = ct_helper:config(httpc_options, Config),
+		port := Port} = ct_helper:config(s2_http, Config),
 	{ok, Pid} = gun:open(Host, Port, #{retry => 0, protocols => [http]}),
 	Pid.
 

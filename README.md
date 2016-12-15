@@ -17,7 +17,7 @@ Since Riak S2 mimics Amazon S3 API, that documentation could also be helpful:
 
 Build and run the docker container.
 The build script will create a user for you and store all information
-required for connection to the `.docker.env.config` file.
+required for connection to the `.develop-environment` file.
 
 ```bash
 $ ./run-docker.sh
@@ -34,9 +34,9 @@ Here basic operations that you can perform. Refer to documentation to get to kno
 
 ```erlang
 %% Initializing connection to Riak S2.
-{ok, Conf} = file:consult(".docker.env.config"),
-{_, Opts} = lists:keyfind(user, 1, Conf),
-{_, #{host := Host, port := Port}} = lists:keyfind(httpc_options, 1, Conf),
+{ok, Conf} = file:consult(".develop-environment"),
+{_, Opts} = lists:keyfind(s2_user, 1, Conf),
+{_, #{host := Host, port := Port}} = lists:keyfind(s2_http, 1, Conf),
 {ok, Pid} = gun:open(Host, Port, #{protocols => [http]}).
 
 %% Creating a bucket, uploading an object and get it back

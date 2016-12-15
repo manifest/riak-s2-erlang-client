@@ -46,7 +46,7 @@ init_per_suite(Config) ->
 init_per_testcase(bucket_list, Config) -> Config;
 init_per_testcase(_Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, Opts)),
 	[{bucket, Bucket} | Config].
@@ -55,7 +55,7 @@ init_per_testcase(_Test, Config) ->
 end_per_testcase(bucket_list, _Config) -> ok;
 end_per_testcase(_Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, Opts)).
 
@@ -65,7 +65,7 @@ end_per_testcase(_Test, Config) ->
 
 bucket_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ExpectedBucket = iolist_to_binary(Bucket),
 	IsBucketExist =
@@ -90,7 +90,7 @@ bucket_list(Config) ->
 
 bucket_acl_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 
 	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, Opts)),
@@ -116,7 +116,7 @@ bucket_acl_roundtrip(Config) ->
 
 bucket_policy_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
-	Opts = ?config(user, Config),
+	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	ExpectedBucket = iolist_to_binary(Bucket),
 	Policy =
