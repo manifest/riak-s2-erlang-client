@@ -27,12 +27,15 @@
 
 %% API
 -export([
+	list/3,
 	list/4,
 	expect_list/2,
 	expect_list/3,
+	init/4,
 	init/5,
 	expect_init/2,
 	expect_init/3,
+	put/7,
 	put/8,
 	await_put/2,
 	await_put/3
@@ -41,6 +44,10 @@
 %% =============================================================================
 %% API
 %% =============================================================================
+
+-spec list(pid(), iodata(), riaks2c:options()) -> reference().
+list(Pid, Bucket, Opts) ->
+	list(Pid, Bucket, #{}, Opts).
 
 -spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 list(Pid, Bucket, ReqOpts, Opts) ->
@@ -61,6 +68,10 @@ expect_list(Pid, Ref, Timeout) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
+-spec init(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
+init(Pid, Bucket, Key, Opts) ->
+	init(Pid, Bucket, Key, #{}, Opts).
+
 -spec init(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 init(Pid, Bucket, Key, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
@@ -78,6 +89,10 @@ expect_init(Pid, Ref, Timeout) ->
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
+
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), non_neg_integer(), riaks2c:options()) -> reference().
+put(Pid, Bucket, Key, Val, UploadId, PartNumber, Opts) ->
+	riaks2c_http:put(Pid, Bucket, Key, Val, UploadId, PartNumber, #{}, Opts).
 
 -spec put(pid(), iodata(), iodata(), iodata(), iodata(), non_neg_integer(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 put(Pid, Bucket, Key, Val, UploadId, PartNumber, ReqOpts, Opts) ->
