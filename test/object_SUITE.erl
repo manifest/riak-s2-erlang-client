@@ -74,6 +74,9 @@ end_per_testcase(Test, Config) ->
 	end,
 	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, #{}, Opts)).
 
+end_per_suite(Config) ->
+	Config.
+
 %% =============================================================================
 %% Tests
 %% =============================================================================
