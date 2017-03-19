@@ -38,3 +38,5 @@ gen:
 			erlang:halt(). \
 		' \
 	&& perl -pi -e 's/string\(\)/binary()/g' "$(GEN_RIAKS2_XSD_HRL_OUT)"
+
+export DEVELOP_ENVIRONMENT = $(shell if [ -f .develop-environment ]; then cat .develop-environment; fi)

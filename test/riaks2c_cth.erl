@@ -16,8 +16,11 @@
 
 -spec init_config() -> list().
 init_config() ->
-	{ok, Config} = file:consult(root_path(<<".develop-environment">>)),
-	Config.
+	try
+		{ok, S, _} = erl_scan:string(os:getenv("DEVELOP_ENVIRONMENT")),
+		{ok, Conf} = erl_parse:parse_term(S),
+		maps:fold(fun(Key, Val, Acc) -> [{Key, Val}|Acc] end, [], Conf)
+	catch _:Reason -> error({missing_develop_environment, ?FUNCTION_NAME, Reason}) end.
 
 -spec root_path(binary()) -> binary().
 root_path(Path) ->

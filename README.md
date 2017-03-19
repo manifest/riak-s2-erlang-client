@@ -34,9 +34,9 @@ Here basic operations that you can perform. Refer to documentation to get to kno
 
 ```erlang
 %% Initializing connection to Riak S2.
-{ok, Conf} = file:consult(".develop-environment"),
-{_, Opts} = lists:keyfind(s2_user, 1, Conf),
-{_, #{host := Host, port := Port}} = lists:keyfind(s2_http, 1, Conf),
+{ok, S, _} = erl_scan:string(os:getenv("DEVELOP_ENVIRONMENT")),
+{ok, Conf} = erl_parse:parse_term(S),
+#{s2_user := Opts, s2_http := #{host := Host, port := Port}} = Conf,
 {ok, Pid} = gun:open(Host, Port, #{protocols => [http]}).
 
 %% Creating a bucket, uploading an object and get it back
@@ -96,7 +96,7 @@ The source code is provided under the terms of [the MIT license][license].
 
 [license]:http://www.opensource.org/licenses/MIT
 [travis]:https://travis-ci.org/manifest/riak-s2-erlang-client?branch=master
-[travis-img]:https://secure.travis-ci.org/manifest/riak-s2-erlang-client.png
+[travis-img]:https://secure.travis-ci.org/manifest/riak-s2-erlang-client.png?branch=master
 [riak-s2-docs]:http://docs.basho.com/riak/cs/2.1.1/references/apis/storage/#service-level-operations
 [amazon-s3-service-docs]:http://docs.aws.amazon.com/AmazonS3/latest/API/RESTServiceOps.html
 [amazon-s3-bucket-docs]:http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketOps.html
