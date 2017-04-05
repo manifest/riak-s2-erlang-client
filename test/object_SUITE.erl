@@ -43,15 +43,17 @@ init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
 %% - Creating a bucket for all testcases
-%% - Creating an object for all testcases but 'object_list', 'object_list_qs'
+%% - Creating an object for all testcases but 'object_list', 'object_list_qs', 'object_put'
 init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(s2_user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, #{}, Opts)),
 	case Test of
-		object_list_qs -> [{bucket, Bucket} | Config];
-		object_list    -> [{bucket, Bucket} | Config];
+		object_list_qs  -> [{bucket, Bucket} | Config];
+		object_list     -> [{bucket, Bucket} | Config];
+		object_put      -> [{bucket, Bucket} | Config];
+		object_put_data -> [{bucket, Bucket} | Config];
 		_ ->
 			Key = riaks2c_cth:make_key(),
 			{Val, CT} = riaks2c_cth:make_content(),
@@ -66,8 +68,10 @@ end_per_testcase(Test, Config) ->
 	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	case Test of
-		object_list_qs -> ok;
-		object_list    -> ok;
+		object_list_qs  -> ok;
+		object_list     -> ok;
+		object_put      -> ok;
+		object_put_data -> ok;
 		_ ->
 			Key = ?config(key, Config),
 			ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts))
@@ -80,6 +84,40 @@ end_per_suite(Config) ->
 %% =============================================================================
 %% Tests
 %% =============================================================================
+
+object_put(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(s2_user, Config),
+	Bucket = ?config(bucket, Config),
+
+	Key = riaks2c_cth:make_key(),
+	{Val, CT} = riaks2c_cth:make_content(),
+	ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, Val, #{content_type => CT}, Opts)),
+
+	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
+	{200, Hs} = riaks2c_object:expect_head(Pid, Ref),
+	{_, CT} = lists:keyfind(<<"content-type">>, 1, Hs),
+	Val = riaks2c_object:expect_body(Pid, Ref),
+	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)).
+
+object_put_data(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(s2_user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = riaks2c_cth:make_key(),
+
+	Size = 3,
+	StreamRef = riaks2c_object:put(Pid, Bucket, Key, <<>>, #{content_length => Size}, Opts),
+	gun:data(Pid, StreamRef, nofin, <<"1">>),
+	gun:data(Pid, StreamRef, nofin, <<"2">>),
+	gun:data(Pid, StreamRef, fin, <<"3">>),
+	ok = riaks2c_object:await_put(Pid, StreamRef),
+
+	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
+	{200, Hs} = riaks2c_object:expect_head(Pid, Ref),
+	{_, CT} = lists:keyfind(<<"content-type">>, 1, Hs),
+	<<"123">> = riaks2c_object:expect_body(Pid, Ref),
+	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)).
 
 object_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -100,8 +138,7 @@ object_list(Config) ->
 	ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts)),
 	true = IsObjectExist(),
 	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)),
-	false = IsObjectExist(),
-	true.
+	false = IsObjectExist().
 
 object_head(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -109,8 +146,7 @@ object_head(Config) ->
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
-	{200, _Hs} = riaks2c_object:expect_head(Pid, riaks2c_object:head(Pid, Bucket, Key, Opts)),
-	true.
+	{200, _Hs} = riaks2c_object:expect_head(Pid, riaks2c_object:head(Pid, Bucket, Key, Opts)).
 
 object_headbody(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -120,8 +156,7 @@ object_headbody(Config) ->
 
 	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
 	{200, _Hs} = riaks2c_object:expect_head(Pid, Ref),
-	_Body = riaks2c_object:expect_body(Pid, Ref),
-	true.
+	_Body = riaks2c_object:expect_body(Pid, Ref).
 
 object_range_request(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -130,8 +165,7 @@ object_range_request(Config) ->
 	Key = ?config(key, Config),
 
 	ReqOpts = #{headers => [{<<"range">>, <<"bytes=0-1">>}]},
-	2 = byte_size(riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))),
-	true.
+	2 = byte_size(riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))).
 
 object_range_request_error(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -140,8 +174,7 @@ object_range_request_error(Config) ->
 	Key = ?config(key, Config),
 
 	ReqOpts = #{headers => [{<<"range">>, <<"invalid">>}]},
-	{error, bad_range} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts)),
-	true.
+	{error, bad_range} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts)).
 
 object_list_qs(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -161,8 +194,7 @@ object_list_qs(Config) ->
 		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:expect_list(Pid, riaks2c_object:list(Pid, Bucket, ReqOpts, Opts)),
 		N = length(Total)
 	end || {N, ReqOpts} <- Tests],
-	[riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)) || Key <- Keys],
-	true.
+	[riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)) || Key <- Keys].
 
 object_copy(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -173,11 +205,10 @@ object_copy(Config) ->
 	DestKey = riaks2c_cth:make_key(),
 	ExpectedDestKey = iolist_to_binary(DestKey),
 
-	{error, {bad_key, ExpectedBucket, ExpectedDestKey}} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts)),
+	{error, {bad_key, ExpectedBucket, ExpectedDestKey}} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, Opts)),
 	ok = riaks2c_object:await_copy(Pid, riaks2c_object:copy(Pid, Bucket, DestKey, Bucket, SourceKey, Opts)),
-	_ = riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, #{return_body => false}, Opts)),
-	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, DestKey, Opts)),
-	true.
+	_ = riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, DestKey, Opts)),
+	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, DestKey, Opts)).
 
 object_acl_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -202,6 +233,4 @@ object_acl_roundtrip(Config) ->
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:expect_get(Pid, riaks2c_object_acl:get(Pid, Bucket, Key, Opts)),
-
-	true.
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_object_acl:expect_get(Pid, riaks2c_object_acl:get(Pid, Bucket, Key, Opts)).

@@ -92,7 +92,20 @@ get(Pid, Id, Secret, Host, Path, SubRes, Qs, Bucket, Headers) ->
 put(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
 	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers).
 
+%% We set 'Content-MD5' header for all requests but those that don't have payload.
 -spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), non_neg_integer(), iodata(), headers()) -> reference().
+put(Pid, Id, Secret, Host, Path, Bucket, <<>>, ContentLength, ContentType, Headers0) ->
+	Method = <<"PUT">>,
+	Date = cow_date:rfc7231(erlang:universaltime()),
+	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], <<>>, ContentType, Date, Headers0),
+	Headers1 =
+		[	{<<"date">>, Date},
+			{<<"host">>, [Bucket, <<$.>>, Host]},
+			{<<"content-type">>, ContentType},
+			{<<"content-length">>, integer_to_binary(ContentLength)},
+			{<<"authorization">>, access_token_v2(Id, Sign)}
+			| Headers0 ],
+	gun:request(Pid, Method, Path, Headers1);
 put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentLength, ContentType, Headers0) ->
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
@@ -103,7 +116,7 @@ put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentLength, ContentType, Header
 			{<<"host">>, [Bucket, <<$.>>, Host]},
 			{<<"content-md5">>, ContentMD5},
 			{<<"content-type">>, ContentType},
-			{<<"content-length">>, ContentLength},
+			{<<"content-length">>, integer_to_binary(ContentLength)},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
 	gun:request(Pid, Method, Path, Headers1, Val).

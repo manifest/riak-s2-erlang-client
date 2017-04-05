@@ -88,8 +88,7 @@ bucket_list(Config) ->
 	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, Opts)),
 	true = IsBucketExist(),
 	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, Opts)),
-	false = IsBucketExist(),
-	true.
+	false = IsBucketExist().
 
 bucket_acl_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -113,9 +112,7 @@ bucket_acl_roundtrip(Config) ->
 	#'AccessControlPolicy'{
 		'AccessControlList' =
 			#'AccessControlList'{
-				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:expect_get(Pid, riaks2c_bucket_acl:get(Pid, Bucket, Opts)),
-
-	true.
+				'Grant' = [	#'Grant'{'Permission' = ExpectedPermission} ]}} = riaks2c_bucket_acl:expect_get(Pid, riaks2c_bucket_acl:get(Pid, Bucket, Opts)).
 
 bucket_policy_roundtrip(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -138,5 +135,4 @@ bucket_policy_roundtrip(Config) ->
 	ok = riaks2c_bucket_policy:await_put(Pid, riaks2c_bucket_policy:put(Pid, Bucket, Policy, Opts)),
 	Policy = riaks2c_bucket_policy:expect_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
 	ok = riaks2c_bucket_policy:await_remove(Pid, riaks2c_bucket_policy:remove(Pid, Bucket, Opts)),
-	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)),
-	true.
+	{error, {bad_bucket_policy, ExpectedBucket}} = riaks2c_bucket_policy:await_get(Pid, riaks2c_bucket_policy:get(Pid, Bucket, Opts)).
