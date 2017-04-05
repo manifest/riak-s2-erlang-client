@@ -84,10 +84,11 @@ put(Pid, Bucket, ACL, Opts) ->
 -spec put(pid(), iodata(), 'AccessControlPolicy'(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 put(Pid, Bucket, ACL, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Val = riaks2c_xsd:write(ACL),
 	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = <<"application/xml">>,
-	Val = riaks2c_xsd:write(ACL),
-	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Val, ContentType, Headers).
+	ContentLength = iolist_size(Val),
+	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Val, ContentLength, ContentType, Headers).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
 await_put(Pid, Ref) ->

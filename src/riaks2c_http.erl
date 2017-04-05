@@ -33,7 +33,7 @@
 	get/7,
 	get/9,
 	put/7,
-	put/9,
+	put/10,
 	delete/7,
 	await/4,
 	await/5,
@@ -92,8 +92,8 @@ get(Pid, Id, Secret, Host, Path, SubRes, Qs, Bucket, Headers) ->
 put(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
 	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers).
 
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), iodata(), headers()) -> reference().
-put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0) ->
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), non_neg_integer(), iodata(), headers()) -> reference().
+put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentLength, ContentType, Headers0) ->
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
 	ContentMD5 = base64:encode(erlang:md5(Val)),
@@ -103,6 +103,7 @@ put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentType, Headers0) ->
 			{<<"host">>, [Bucket, <<$.>>, Host]},
 			{<<"content-md5">>, ContentMD5},
 			{<<"content-type">>, ContentType},
+			{<<"content-length">>, ContentLength},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
 			| Headers0 ],
 	gun:request(Pid, Method, Path, Headers1, Val).

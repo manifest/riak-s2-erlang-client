@@ -180,7 +180,8 @@ put(Pid, Bucket, Key, Val, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = maps:get(content_type, ReqOpts, <<"application/octet-stream">>),
-	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentType, Headers).
+	ContentLength = case maps:find(content_length, ReqOpts) of {ok, Len} -> Len; _ -> iolist_size(Val) end,
+	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key], Bucket, Val, ContentLength, ContentType, Headers).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
 await_put(Pid, Ref) ->

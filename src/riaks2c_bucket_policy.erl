@@ -90,10 +90,11 @@ put(Pid, Bucket, Policy, Opts) ->
 -spec put(pid(), iodata(), map(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 put(Pid, Bucket, Policy, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Val = jsx:encode(Policy),
 	Headers = maps:get(headers, ReqOpts, []),
 	ContentType = <<"application/json">>,
-	Val = jsx:encode(Policy),
-	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentType, Headers).
+	ContentLength = iolist_size(Val),
+	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, ContentLength, ContentType, Headers).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
 await_put(Pid, Ref) ->
