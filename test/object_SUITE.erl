@@ -187,7 +187,8 @@ object_list_qs(Config) ->
 		[	{8, #{}},
 			{2, #{max_keys => 2}},
 			{5, #{prefix => <<"group_a_">>}},
-			{3, #{prefix => <<"gr">>, delimiter => <<"_a_">>}} ],
+			{3, #{prefix => <<"gr">>, delimiter => <<"_a_">>}},
+			{3, #{marker => <<"group_b_">>}} ],
 
 	[ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts)) || Key <- Keys],
 	[begin
