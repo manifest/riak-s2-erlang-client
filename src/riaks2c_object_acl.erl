@@ -85,10 +85,8 @@ put(Pid, Bucket, Key, ACL, Opts) ->
 put(Pid, Bucket, Key, ACL, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Val = riaks2c_xsd:write(ACL),
-	Headers = maps:get(headers, ReqOpts, []),
-	ContentType = <<"application/xml">>,
-	ContentLength = iolist_size(Val),
-	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Val, ContentLength, ContentType, Headers).
+	Headers = [{<<"content-type">>, <<"application/xml">>}, maps:get(headers, ReqOpts, [])],
+	riaks2c_http:put(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?acl">>], Bucket, Val, Headers).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
 await_put(Pid, Ref) ->

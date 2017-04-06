@@ -57,7 +57,8 @@ init_per_testcase(Test, Config) ->
 		_ ->
 			Key = riaks2c_cth:make_key(),
 			{Val, CT} = riaks2c_cth:make_content(),
-			ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, Val, #{content_type => CT}, Opts)),
+			Headers = [{<<"content-type">>, CT}],
+			ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, Val, #{headers => Headers}, Opts)),
 			[{bucket, Bucket}, {key, Key} | Config]
 	end.
 
@@ -92,7 +93,8 @@ object_put(Config) ->
 
 	Key = riaks2c_cth:make_key(),
 	{Val, CT} = riaks2c_cth:make_content(),
-	ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, Val, #{content_type => CT}, Opts)),
+	Headers = [{<<"content-type">>, CT}],
+	ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, Val, #{headers => Headers}, Opts)),
 
 	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
 	{200, Hs} = riaks2c_object:expect_head(Pid, Ref),
@@ -107,7 +109,9 @@ object_put_data(Config) ->
 	Key = riaks2c_cth:make_key(),
 
 	Size = 3,
-	StreamRef = riaks2c_object:put(Pid, Bucket, Key, <<>>, #{content_length => Size}, Opts),
+	CT = <<"application/octet-stream">>,
+	Headers = [{<<"content-type">>, CT}, {<<"content-length">>, integer_to_binary(Size)}],
+	StreamRef = riaks2c_object:put(Pid, Bucket, Key, <<>>, #{headers => Headers}, Opts),
 	gun:data(Pid, StreamRef, nofin, <<"1">>),
 	gun:data(Pid, StreamRef, nofin, <<"2">>),
 	gun:data(Pid, StreamRef, fin, <<"3">>),

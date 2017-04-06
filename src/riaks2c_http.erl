@@ -33,13 +33,14 @@
 	get/7,
 	get/9,
 	put/7,
-	put/10,
+	put/8,
 	delete/7,
 	await/4,
 	await/5,
 	await_head/5,
 	await_body/4,
 	fold_body/6,
+	amz_headers/1,
 	signature_v2/5,
 	signature_v2/7,
 	access_token_v2/2,
@@ -90,35 +91,38 @@ get(Pid, Id, Secret, Host, Path, SubRes, Qs, Bucket, Headers) ->
 
 -spec put(pid(), iodata(), iodata(), iodata(), any(), iodata(), headers()) -> reference().
 put(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
-	request(Pid, Id, Secret, <<"PUT">>, Host, Path, Bucket, Headers).
+	put(Pid, Id, Secret, Host, Path, Bucket, <<>>, Headers).
 
 %% We set 'Content-MD5' header for all requests but those that don't have payload.
--spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), non_neg_integer(), iodata(), headers()) -> reference().
-put(Pid, Id, Secret, Host, Path, Bucket, <<>>, ContentLength, ContentType, Headers0) ->
+-spec put(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), any(), headers()) -> reference().
+put(Pid, Id, Secret, Host, Path, Bucket, <<>>, Headers0) ->
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
-	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], <<>>, ContentType, Date, Headers0),
+	Resource = [<<$/>>, Bucket, Path],
+	BucketHost = [Bucket, <<$.>>, Host],
 	Headers1 =
-		[	{<<"date">>, Date},
-			{<<"host">>, [Bucket, <<$.>>, Host]},
-			{<<"content-type">>, ContentType},
-			{<<"content-length">>, integer_to_binary(ContentLength)},
-			{<<"authorization">>, access_token_v2(Id, Sign)}
-			| Headers0 ],
+		case content_headers(Headers0) of
+			{AmzHeaders, {ok, CT}, {ok, _CL}, _MaybeCS} -> [{<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, <<>>, CT, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders, {ok, CT},     error, _MaybeCS} -> [{<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, <<>>, CT, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders,    error,  _MaybeCL, _MaybeCS} -> [{<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, <<>>, <<>>, Date, AmzHeaders))} | Headers0]
+		end,
 	gun:request(Pid, Method, Path, Headers1);
-put(Pid, Id, Secret, Host, Path, Bucket, Val, ContentLength, ContentType, Headers0) ->
+put(Pid, Id, Secret, Host, Path, Bucket, Val, Headers0) ->
 	Method = <<"PUT">>,
 	Date = cow_date:rfc7231(erlang:universaltime()),
-	ContentMD5 = base64:encode(erlang:md5(Val)),
-	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], ContentMD5, ContentType, Date, Headers0),
+	Resource = [<<$/>>, Bucket, Path],
+	BucketHost = [Bucket, <<$.>>, Host],
 	Headers1 =
-		[	{<<"date">>, Date},
-			{<<"host">>, [Bucket, <<$.>>, Host]},
-			{<<"content-md5">>, ContentMD5},
-			{<<"content-type">>, ContentType},
-			{<<"content-length">>, integer_to_binary(ContentLength)},
-			{<<"authorization">>, access_token_v2(Id, Sign)}
-			| Headers0 ],
+		case content_headers(Headers0) of
+			{AmzHeaders, {ok, CT}, {ok, _CL}, {ok, CS}} ->                                                  [                                                     {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, CT, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders,    error, {ok, _CL}, {ok, CS}} ->                                                  [                                                     {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, <<>>, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders, {ok, CT},    error,  {ok, CS}} -> CL = content_length(Val),                        [{<<"content-length">>, CL},                          {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, CT, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders,    error,    error,  {ok, CS}} -> CL = content_length(Val),                        [{<<"content-length">>, CL},                          {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, <<>>, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders, {ok, CT}, {ok, _CL},    error} ->                           CS = content_md5(Val), [                            {<<"content-md5">>, CS}, {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, CT, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders,    error, {ok, _CL},    error} ->                           CS = content_md5(Val), [                            {<<"content-md5">>, CS}, {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, <<>>, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders, {ok, CT},    error,     error} -> CL = content_length(Val), CS = content_md5(Val), [{<<"content-length">>, CL}, {<<"content-md5">>, CS}, {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, CT, Date, AmzHeaders))} | Headers0];
+			{AmzHeaders,    error,    error,     error} -> CL = content_length(Val), CS = content_md5(Val), [{<<"content-length">>, CL}, {<<"content-md5">>, CS}, {<<"date">>, Date}, {<<"host">>, BucketHost}, {<<"authorization">>, access_token_v2(Id, signature_v2(Secret, Method, Resource, CS, <<>>, Date, AmzHeaders))} | Headers0]
+		end,
 	gun:request(Pid, Method, Path, Headers1, Val).
 
 -spec delete(pid(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> reference().
@@ -200,18 +204,22 @@ fold_body(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 		exit(timeout)
 	end.
 
+-spec amz_headers(list()) -> list().
+amz_headers(Input) ->
+	amz_headers(Input, ordsets:new()).
+
 -spec signature_v2(iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
 signature_v2(Secret, Method, Resource, Date, Headers) ->
 	signature_v2(Secret, Method, Resource, <<>>, <<>>, Date, Headers).
 
 -spec signature_v2(iodata(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
-signature_v2(Secret, Method, Resource, ContentMD5, ContentType, Date, Headers) ->
+signature_v2(Secret, Method, Resource, ContentMD5, ContentType, Date, AmzHeaders) ->
 	Input =
 		[	Method, <<$\n>>,
 			ContentMD5, <<$\n>>,
 			ContentType, <<$\n>>,
 			Date, <<$\n>>,
-			amz_headers(Headers),
+			AmzHeaders,
 			Resource ],
 	base64:encode(crypto:hmac(sha, Secret, Input)).
 
@@ -256,7 +264,7 @@ default_request_timeout() ->
 -spec request(pid(), iodata(), iodata(), binary(), iodata(), headers()) -> reference().
 request(Pid, Id, Secret, Method, Path, Headers0) ->
 	Date = cow_date:rfc7231(erlang:universaltime()),
-	Sign = signature_v2(Secret, Method, Path, Date, Headers0),
+	Sign = signature_v2(Secret, Method, Path, Date, amz_headers(Headers0)),
 	Headers1 =
 		[	{<<"date">>, Date},
 			{<<"authorization">>, access_token_v2(Id, Sign)}
@@ -266,7 +274,7 @@ request(Pid, Id, Secret, Method, Path, Headers0) ->
 -spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), headers()) -> reference().
 request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0) ->
 	Date = cow_date:rfc7231(erlang:universaltime()),
-	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, Headers0),
+	Sign = signature_v2(Secret, Method, [<<$/>>, Bucket, Path], Date, amz_headers(Headers0)),
 	Headers1 =
 		[	{<<"date">>, Date},
 			{<<"host">>, [Bucket, <<$.>>, Host]},
@@ -285,7 +293,7 @@ request(Pid, Id, Secret, Method, Host, Path, Bucket, Headers0) ->
 -spec request(pid(), iodata(), iodata(), binary(), iodata(), iodata(), iodata(), qs(), iodata(), headers()) -> reference().
 request(Pid, Id, Secret, Method, Host, Path, SubRes, Qs, Bucket, Headers0) ->
 	Date = cow_date:rfc7231(erlang:universaltime()),
-	Sign = signature_v2(Secret, Method, resource([<<$/>>, Bucket, Path], SubRes), Date, Headers0),
+	Sign = signature_v2(Secret, Method, resource([<<$/>>, Bucket, Path], SubRes), Date, amz_headers(Headers0)),
 	Headers1 =
 		[	{<<"date">>, Date},
 			{<<"host">>, [Bucket, <<$.>>, Host]},
@@ -302,18 +310,6 @@ path(Path, SubRes, Qs) -> [Path, <<$?>>, SubRes, <<$&>>, cow_qs:qs(Qs)].
 -spec resource(iodata(), iodata()) -> iodata().
 resource(Path, <<>>)   -> Path;
 resource(Path, SubRes) -> [Path, <<$?>>, SubRes].
-
--spec amz_headers(list()) -> list().
-amz_headers(Input) ->
-	amz_headers(Input, ordsets:new()).
-
--spec amz_headers(list(), list()) -> list().
-amz_headers([{<<"x-amz-", _/bits>> =Key, Val}|T], L) ->
-	amz_headers(T, ordsets:add_element([Key, <<$:>>, Val, <<$\n>>], L));
-amz_headers([_|T], L) ->
-	amz_headers(T, L);
-amz_headers([], L) ->
-	L.
 
 -spec parse_resource_bucket(binary()) -> binary().
 parse_resource_bucket(<<$/, Rest/bits>>) ->
@@ -334,3 +330,28 @@ parse_resource_key(<<C, Rest/bits>>, Acc)  -> parse_resource_key(Rest, <<Acc/bin
 -spec accumulate_body(binary(), fin(), binary()) -> binary().
 accumulate_body(Data, _IsFin, Acc) ->
 	<<Acc/binary, Data/binary>>.
+
+-spec amz_headers(headers(), headers()) -> headers().
+amz_headers([{<<"x-amz-", _/bits>> =Key, Val}|T], L) -> amz_headers(T, ordsets:add_element([Key, <<$:>>, Val, <<$\n>>], L));
+amz_headers([_|T], L)                                -> amz_headers(T, L);
+amz_headers([], L)                                   -> L.
+
+-spec content_headers(headers()) -> {headers(), MaybeH, MaybeH, MaybeH} when MaybeH :: {ok, iodata()} | error.
+content_headers(Headers) ->
+	content_headers(Headers, ordsets:new(), error, error, error).
+
+-spec content_headers(headers(), headers(), MaybeH, MaybeH, MaybeH) -> {headers(), MaybeH, MaybeH, MaybeH} when MaybeH :: {ok, iodata()} | error.
+content_headers([{<<"content-type">>, Val}|T], Hamz, _CT, CL, CS)       -> content_headers(T, Hamz, {ok, Val}, CL, CS);
+content_headers([{<<"content-length">>, Val}|T], Hamz, CT, _CL, CS)     -> content_headers(T, Hamz, CT, {ok, Val}, CS);
+content_headers([{<<"content-md5">>, Val}|T], Hamz, CT, CL, _CS)        -> content_headers(T, Hamz, CT, CL, {ok, Val});
+content_headers([{<<"x-amz-", _/bits>> =Key, Val}|T], Hamz, CT, CL, CS) -> content_headers(T, ordsets:add_element([Key, <<$:>>, Val, <<$\n>>], Hamz), CT, CL, CS);
+content_headers([_|T], Hamz, CT, CL, CS)                                -> content_headers(T, Hamz, CT, CL, CS);
+content_headers(_, Hamz, CT, CL, CS)                                    -> {Hamz, CT, CL, CS}.
+
+-spec content_length(iodata()) -> binary().
+content_length(Val) ->
+	integer_to_binary(iolist_size(Val)).
+
+-spec content_md5(iodata()) -> binary().
+content_md5(Val) ->
+	base64:encode(erlang:md5(Val)).
