@@ -70,8 +70,9 @@ list(Pid, Bucket, Opts) ->
 -spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 list(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
+	Qs = maps:get(qs, ReqOpts, []),
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, list_qs(ReqOpts), Bucket, Headers).
+	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, Qs, Bucket, Headers).
 
 -spec expect_list(pid(), reference()) -> 'ListBucketResult'().
 expect_list(Pid, Ref) ->
@@ -238,19 +239,3 @@ await_remove(Pid, Ref, Timeout) ->
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
-
-%% =============================================================================
-%% Internal functions
-%% =============================================================================
-
--spec list_qs(riaks2c_http:request_options()) -> riak2c_http:qs().
-list_qs(ReqOpts) ->
-	list_qs(maps:to_list(ReqOpts), []).
-
--spec list_qs(list(), riaks2c_http:qs()) -> riaks2c_http:qs().
-list_qs([{prefix, Val}|T], Acc)    -> list_qs(T, [{<<"prefix">>, Val} | Acc]);
-list_qs([{delimiter, Val}|T], Acc) -> list_qs(T, [{<<"delimiter">>, Val} | Acc]);
-list_qs([{marker, Val}|T], Acc)    -> list_qs(T, [{<<"marker">>, Val} | Acc]);
-list_qs([{max_keys, Val}|T], Acc)  -> list_qs(T, [{<<"max-keys">>, integer_to_binary(Val)} | Acc]);
-list_qs([_|T], Acc)                -> list_qs(T, Acc);
-list_qs([], Acc)                   -> Acc.

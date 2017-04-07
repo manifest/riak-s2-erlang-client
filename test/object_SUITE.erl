@@ -188,17 +188,17 @@ object_list_qs(Config) ->
 		[[<<"group_a_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 5)]
 		++ [[<<"group_b_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 3)],
 	Tests =
-		[	{8, #{}},
-			{2, #{max_keys => 2}},
-			{5, #{prefix => <<"group_a_">>}},
-			{3, #{prefix => <<"gr">>, delimiter => <<"_a_">>}},
-			{3, #{marker => <<"group_b_">>}} ],
+		[	{8, []},
+			{2, [{<<"max-keys">>, <<"2">>}]},
+			{5, [{<<"prefix">>, <<"group_a_">>}]},
+			{3, [{<<"prefix">>, <<"gr">>}, {<<"delimiter">>, <<"_a_">>}]},
+			{3, [{<<"marker">>, <<"group_b_">>}]} ],
 
 	[ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts)) || Key <- Keys],
 	[begin
-		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:expect_list(Pid, riaks2c_object:list(Pid, Bucket, ReqOpts, Opts)),
+		#'ListBucketResult'{'Contents' = Total} = riaks2c_object:expect_list(Pid, riaks2c_object:list(Pid, Bucket, #{qs => Qs}, Opts)),
 		N = length(Total)
-	end || {N, ReqOpts} <- Tests],
+	end || {N, Qs} <- Tests],
 	[riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)) || Key <- Keys].
 
 object_copy(Config) ->
