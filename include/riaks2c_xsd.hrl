@@ -31,7 +31,7 @@
 -type 'Error'() :: #'Error'{}.
 
 
--record('Upload', {anyAttribs :: anyAttribs(),
+-record('MultipartUpload', {anyAttribs :: anyAttribs(),
 	'Key' :: binary(),
 	'UploadId' :: binary(),
 	'Initiator' :: 'CanonicalUser'(),
@@ -39,7 +39,7 @@
 	'StorageClass' :: binary(),
 	'Initiated' :: binary()}).
 
--type 'Upload'() :: #'Upload'{}.
+-type 'MultipartUpload'() :: #'MultipartUpload'{}.
 
 
 -record('ListMultipartUploadsResult', {anyAttribs :: anyAttribs(),
@@ -52,10 +52,32 @@
 	'Prefix' :: binary() | undefined,
 	'MaxUploads' :: integer(),
 	'IsTruncated' :: boolean(),
-	'Upload' :: ['Upload'()] | undefined,
+	'Upload' :: ['MultipartUpload'()] | undefined,
 	'CommonPrefixes' :: ['PrefixEntry'()] | undefined}).
 
 -type 'ListMultipartUploadsResult'() :: #'ListMultipartUploadsResult'{}.
+
+
+-record('MultipartUploadPart', {anyAttribs :: anyAttribs(),
+	'PartNumber' :: integer(),
+	'ETag' :: binary()}).
+
+-type 'MultipartUploadPart'() :: #'MultipartUploadPart'{}.
+
+
+-record('CompleteMultipartUpload', {anyAttribs :: anyAttribs(),
+	'Part' :: ['MultipartUploadPart'()]}).
+
+-type 'CompleteMultipartUpload'() :: #'CompleteMultipartUpload'{}.
+
+
+-record('CompleteMultipartUploadResult', {anyAttribs :: anyAttribs(),
+	'Location' :: binary(),
+	'Bucket' :: binary(),
+	'Key' :: binary(),
+	'ETag' :: binary()}).
+
+-type 'CompleteMultipartUploadResult'() :: #'CompleteMultipartUploadResult'{}.
 
 
 -record('InitiateMultipartUploadResult', {anyAttribs :: anyAttribs(),

@@ -70,9 +70,9 @@ list(Pid, Bucket, Opts) ->
 -spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 list(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	Qs = maps:get(qs, ReqOpts, []),
+	NoSignQs = maps:get(qs, ReqOpts, []),
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<>>, Qs, Bucket, Headers).
+	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, [], NoSignQs, Bucket, Headers).
 
 -spec expect_list(pid(), reference()) -> 'ListBucketResult'().
 expect_list(Pid, Ref) ->

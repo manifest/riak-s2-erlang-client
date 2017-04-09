@@ -48,7 +48,7 @@ init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(s2_user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
-	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, #{}, Opts)),
+	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, Opts)),
 	case Test of
 		object_list_qs  -> [{bucket, Bucket} | Config];
 		object_list     -> [{bucket, Bucket} | Config];
@@ -77,7 +77,7 @@ end_per_testcase(Test, Config) ->
 			Key = ?config(key, Config),
 			ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts))
 	end,
-	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, #{}, Opts)).
+	ok = riaks2c_bucket:await_remove(Pid, riaks2c_bucket:remove(Pid, Bucket, Opts)).
 
 end_per_suite(Config) ->
 	Config.
@@ -221,7 +221,7 @@ object_acl_roundtrip(Config) ->
 	Bucket = ?config(bucket, Config),
 	Key = ?config(key, Config),
 
-	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, #{}, Opts)),
+	#'ListAllMyBucketsResult'{'Owner' = ExpectedOwner} = riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, Opts)),
 	ExpectedPermission = <<"READ_ACP">>,
 	ACL =
 		#'AccessControlPolicy'{

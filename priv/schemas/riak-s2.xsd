@@ -326,6 +326,32 @@
 			</xsd:sequence>
 		</xsd:complexType>
 	</xsd:element>
+
+	<xsd:element name="CompleteMultipartUploadResult">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="Location" type="xsd:string"/>
+				<xsd:element name="Bucket" type="xsd:string"/>
+				<xsd:element name="Key" type="xsd:string"/>
+				<xsd:element name="ETag" type="xsd:string"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:element name="CompleteMultipartUpload">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="Part" type="tns:MultipartUploadPart" minOccurs="1" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:complexType name="MultipartUploadPart">
+		<xsd:sequence>
+			<xsd:element name="PartNumber" type="xsd:int"/>
+			<xsd:element name="ETag" type="xsd:string"/>
+		</xsd:sequence>
+	</xsd:complexType>
 	
 	<xsd:element name="ListMultipartUploadsResult">
 		<xsd:complexType>
@@ -339,13 +365,13 @@
 				<xsd:element name="Prefix" type="xsd:string" minOccurs="0"/>
 				<xsd:element name="MaxUploads" type="xsd:int"/>
 				<xsd:element name="IsTruncated" type="xsd:boolean"/>
-				<xsd:element name="Upload" type="tns:Upload" minOccurs="0" maxOccurs="unbounded"/>
+				<xsd:element name="Upload" type="tns:MultipartUpload" minOccurs="0" maxOccurs="unbounded"/>
 				<xsd:element name="CommonPrefixes" type="tns:PrefixEntry" minOccurs="0" maxOccurs="unbounded"/>
 			</xsd:sequence>
 		</xsd:complexType>
 	</xsd:element>
 
-	<xsd:complexType name="Upload">
+	<xsd:complexType name="MultipartUpload">
 		<xsd:sequence>
 			<xsd:element name="Key" type="xsd:string"/>
 			<xsd:element name="UploadId" type="xsd:string"/>

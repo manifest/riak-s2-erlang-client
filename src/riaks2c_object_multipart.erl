@@ -27,23 +27,105 @@
 
 %% API
 -export([
-	list/3,
-	list/4,
-	expect_list/2,
-	expect_list/3,
 	init/4,
 	init/5,
 	expect_init/2,
 	expect_init/3,
+	complete/6,
+	complete/7,
+	expect_complete/2,
+	expect_complete/3,
+	cancel/5,
+	cancel/6,
+	expect_cancel/2,
+	expect_cancel/3,
+	list/3,
+	list/4,
+	expect_list/2,
+	expect_list/3,
 	put/7,
 	put/8,
 	await_put/2,
-	await_put/3
+	await_put/3,
+	expect_put/2,
+	expect_put/3
 ]).
 
 %% =============================================================================
 %% API
 %% =============================================================================
+
+-spec init(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
+init(Pid, Bucket, Key, Opts) ->
+	init(Pid, Bucket, Key, #{}, Opts).
+
+-spec init(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
+init(Pid, Bucket, Key, ReqOpts, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:post(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?uploads">>], Bucket, Headers).
+
+-spec expect_init(pid(), reference()) -> 'InitiateMultipartUploadResult'().
+expect_init(Pid, Ref) ->
+	expect_init(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec expect_init(pid(), reference(), non_neg_integer()) -> 'InitiateMultipartUploadResult'().
+expect_init(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+-spec complete(pid(), iodata(), iodata(), iodata(), [{non_neg_integer(), iodata()}], riaks2c:options()) -> reference().
+complete(Pid, Bucket, Key, UploadId, Parts, Opts) ->
+	complete(Pid, Bucket, Key, UploadId, Parts, #{}, Opts).
+
+-spec expect_complete(pid(), reference()) -> 'CompleteMultipartUploadResult'().
+expect_complete(Pid, Ref) ->
+	expect_complete(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec expect_complete(pid(), reference(), non_neg_integer()) -> 'CompleteMultipartUploadResult'().
+expect_complete(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
+		(400, _Hs, Xml) -> riaks2c_http:throw_response_error_400(Xml);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+-spec complete(pid(), iodata(), iodata(), iodata(), [{non_neg_integer(), iodata()}], riaks2c_http:request_options(), riaks2c:options()) -> reference().
+complete(Pid, Bucket, Key, UploadId, Parts, ReqOpts, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	Val =
+		riaks2c_xsd:write(
+			#'CompleteMultipartUpload'{
+				'Part' = [#'MultipartUploadPart'{'PartNumber' = Num, 'ETag' = Etag} || {Num, Etag} <- Parts]}),
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:post(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?uploadId=">>, UploadId], Bucket, Val, Headers).
+
+-spec cancel(pid(), iodata(), iodata(), iodata(), riaks2c:options()) -> reference().
+cancel(Pid, Bucket, Key, UploadId, Opts) ->
+	cancel(Pid, Bucket, Key, UploadId, #{}, Opts).
+
+-spec cancel(pid(), iodata(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
+cancel(Pid, Bucket, Key, UploadId, ReqOpts, Opts) ->
+	#{id := Id, secret := Secret, host := Host} = Opts,
+	SignQs = [{<<"uploadId">>, UploadId}],
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:delete(Pid, Id, Secret, Host, [<<$/>>, Key], SignQs, [], Bucket, Headers).
+
+-spec expect_cancel(pid(), reference()) -> ok.
+expect_cancel(Pid, Ref) ->
+	expect_cancel(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec expect_cancel(pid(), reference(), non_neg_integer()) -> ok.
+expect_cancel(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(204, _Hs, _No) -> ok;
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
 
 -spec list(pid(), iodata(), riaks2c:options()) -> reference().
 list(Pid, Bucket, Opts) ->
@@ -52,9 +134,10 @@ list(Pid, Bucket, Opts) ->
 -spec list(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 list(Pid, Bucket, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
-	Qs = maps:get(qs, ReqOpts, []),
+	SignQs = [{<<"uploads">>, true}],
+	NoSignQs = maps:get(qs, ReqOpts, []),
 	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, <<"uploads">>, Qs, Bucket, Headers).
+	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, SignQs, NoSignQs, Bucket, Headers).
 
 -spec expect_list(pid(), reference()) -> 'ListMultipartUploadsResult'().
 expect_list(Pid, Ref) ->
@@ -68,31 +151,9 @@ expect_list(Pid, Ref, Timeout) ->
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
 
--spec init(pid(), iodata(), iodata(), riaks2c:options()) -> reference().
-init(Pid, Bucket, Key, Opts) ->
-	init(Pid, Bucket, Key, #{}, Opts).
-
--spec init(pid(), iodata(), iodata(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
-init(Pid, Bucket, Key, ReqOpts, Opts) ->
-	#{id := Id, secret := Secret, host := Host} = Opts,
-	Headers = maps:get(headers, ReqOpts, []),
-	riaks2c_http:post(Pid, Id, Secret, Host, [<<$/>>, Key, <<"?uploads">>], Bucket, Headers).
-
--spec expect_init(pid(), reference()) -> iodata().
-expect_init(Pid, Ref) ->
-	expect_init(Pid, Ref, riaks2c_http:default_request_timeout()).
-
--spec expect_init(pid(), reference(), non_neg_integer()) -> iodata().
-expect_init(Pid, Ref, Timeout) ->
-	riaks2c_http:await(Pid, Ref, Timeout, fun
-		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
-		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
-	end).
-
 -spec put(pid(), iodata(), iodata(), iodata(), iodata(), non_neg_integer(), riaks2c:options()) -> reference().
 put(Pid, Bucket, Key, Val, UploadId, PartNumber, Opts) ->
-	riaks2c_http:put(Pid, Bucket, Key, Val, UploadId, PartNumber, #{}, Opts).
+	put(Pid, Bucket, Key, Val, UploadId, PartNumber, #{}, Opts).
 
 -spec put(pid(), iodata(), iodata(), iodata(), iodata(), non_neg_integer(), riaks2c_http:request_options(), riaks2c:options()) -> reference().
 put(Pid, Bucket, Key, Val, UploadId, PartNumber, ReqOpts, Opts) ->
@@ -101,14 +162,36 @@ put(Pid, Bucket, Key, Val, UploadId, PartNumber, ReqOpts, Opts) ->
 	Path = [<<$/>>, Key, <<"?partNumber=">>, integer_to_binary(PartNumber), <<"&uploadId=">>, UploadId],
 	riaks2c_http:put(Pid, Id, Secret, Host, Path, Bucket, Val, Headers).
 
--spec await_put(pid(), reference()) -> ok | {error, any()}.
+-spec await_put(pid(), reference()) -> {ok, iodata()} | {error, any()}.
 await_put(Pid, Ref) ->
 	await_put(Pid, Ref, riaks2c_http:default_request_timeout()).
 
--spec await_put(pid(), reference(), non_neg_integer()) -> ok | {error, any()}.
+-spec await_put(pid(), reference(), non_neg_integer()) -> {ok, iodata()} | {error, any()}.
 await_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
-		(200, _Hs, _No) -> ok;
+		(200, Hs, _No)  -> {_, Etag} = lists:keyfind(<<"etag">>, 1, Hs), {ok, parse_etag(Etag)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
+
+-spec expect_put(pid(), reference()) -> iodata().
+expect_put(Pid, Ref) ->
+	expect_put(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec expect_put(pid(), reference(), non_neg_integer()) -> iodata().
+expect_put(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(200, Hs, _No)  -> {_, Etag} = lists:keyfind(<<"etag">>, 1, Hs), parse_etag(Etag);
+		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
+		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+	end).
+
+%% =============================================================================
+%% Internal functions
+%% =============================================================================
+
+-spec parse_etag(iodata()) -> iodata().
+parse_etag(Val) ->
+	%% Removing start and end quotes
+	Size = iolist_size(Val),
+	binary:part(Val, 1, Size -2).
