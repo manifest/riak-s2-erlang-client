@@ -43,13 +43,14 @@ init_per_suite(Config) ->
 	riaks2c_cth:init_config() ++ Config.
 
 %% - Creating a bucket for all testcases
-%% - Creating an object for all testcases but 'object_list', 'object_list_qs', 'object_put'
+%% - Creating an object for all testcases but 'object_fold', 'object_list', 'object_list_qs', 'object_put'
 init_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(s2_user, Config),
 	Bucket = riaks2c_cth:make_bucket(),
 	ok = riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, Bucket, Opts)),
 	case Test of
+		object_fold     -> [{bucket, Bucket} | Config];
 		object_list_qs  -> [{bucket, Bucket} | Config];
 		object_list     -> [{bucket, Bucket} | Config];
 		object_put      -> [{bucket, Bucket} | Config];
@@ -63,12 +64,13 @@ init_per_testcase(Test, Config) ->
 	end.
 
 %% - Removing the recently created bucket for all testcases
-%% - Removing the recently created object for all testcases but 'object_list', 'object_list_qs'
+%% - Removing the recently created object for all testcases but 'object_fold','object_list', 'object_list_qs', 'object_put'
 end_per_testcase(Test, Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
 	case Test of
+		object_fold     -> ok;
 		object_list_qs  -> ok;
 		object_list     -> ok;
 		object_put      -> ok;
@@ -122,6 +124,30 @@ object_put_data(Config) ->
 	{_, CT} = lists:keyfind(<<"content-type">>, 1, Hs),
 	<<"123">> = riaks2c_object:expect_body(Pid, Ref),
 	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)).
+
+object_fold(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(s2_user, Config),
+	Bucket = ?config(bucket, Config),
+	Size = 303,
+	Ids = [<<"a">>] ++ [<<"b_", (integer_to_binary(N))/binary>> || N <- lists:seq(1, Size)] ++ [<<"c">>],
+	Qs = [{<<"prefix">>, <<"b_">>}, {<<"max-keys">>, <<"100">>}],
+
+	%% Checking an empty bucket
+	0 = riaks2c_object:fold(Pid, Bucket, Opts, 0, fun(_Entry, Acc) -> Acc +1 end),
+
+	%% Filling the bucket with objects
+	[riaks2c_object:await_put(Pid, Ref, infinity) || Ref <-
+		[riaks2c_object:put(Pid, Bucket, Id, Id, Opts) || Id <-
+			Ids]],
+
+	%% Checking the filled bucket
+	Size = riaks2c_object:fold(Pid, Bucket, #{qs => Qs}, Opts, 0, fun(_Entry, Acc) -> Acc +1 end),
+
+	%% Cleaning up
+	[riaks2c_object:await_remove(Pid, Ref, infinity) || Ref <-
+		[riaks2c_object:remove(Pid, Bucket, Id, Opts) || Id <-
+			Ids]].
 
 object_list(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
@@ -184,15 +210,18 @@ object_list_qs(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(s2_user, Config),
 	Bucket = ?config(bucket, Config),
-	Keys =
-		[[<<"group_a_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 5)]
-		++ [[<<"group_b_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 3)],
+	Agroup = [[<<"group_a_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 5)],
+	Bgroup = [[<<"group_b_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 3)],
+	Cgroup = [[<<"group_c_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 4)],
+	Keys = Agroup ++ Bgroup ++ Cgroup,
+	Alast = iolist_to_binary(lists:last(Agroup)),
 	Tests =
-		[	{8, []},
+		[	{12, []},
 			{2, [{<<"max-keys">>, <<"2">>}]},
 			{5, [{<<"prefix">>, <<"group_a_">>}]},
-			{3, [{<<"prefix">>, <<"gr">>}, {<<"delimiter">>, <<"_a_">>}]},
-			{3, [{<<"marker">>, <<"group_b_">>}]} ],
+			{7, [{<<"prefix">>, <<"gr">>}, {<<"delimiter">>, <<"_a_">>}]},
+			{7, [{<<"marker">>, Alast}]},
+			{3, [{<<"marker">>, Alast}, {<<"prefix">>, <<"group_b_">>}]} ],
 
 	[ok = riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, Bucket, Key, <<42>>, Opts)) || Key <- Keys],
 	[begin

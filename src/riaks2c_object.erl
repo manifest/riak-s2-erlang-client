@@ -27,6 +27,8 @@
 
 %% API
 -export([
+	fold/5,
+	fold/6,
 	list/3,
 	list/4,
 	expect_list/2,
@@ -59,9 +61,48 @@
 	await_remove/3
 ]).
 
+%% Types
+-type fold_handler() :: fun(('ListEntry'(), any()) -> any()).
+
+-export_type([fold_handler/0]).
+
 %% =============================================================================
 %% API
 %% =============================================================================
+
+-spec fold(pid(), iodata(), riaks2c:options(), any(), fold_handler()) -> reference().
+fold(Pid, Bucket, Opts, Acc, Handle) ->
+	fold(Pid, Bucket, #{}, Opts, Acc, Handle).
+
+-spec fold(pid(), iodata(), riaks2c_http:request_options(), riaks2c:options(), any(), fold_handler()) -> any().
+fold(Pid, Bucket, ReqOpts, Opts, Acc0, Handle) ->
+	Qs0 = maps:get(qs, ReqOpts, []),
+	{MaxKeys, Qs1} =
+		case lists:keyfind(<<"max-keys">>, 1, maps:get(qs, ReqOpts, [])) of
+			false    -> {1000, [{<<"max-keys">>, <<"1000">>} | Qs0]};
+			{_, Val} -> {binary_to_integer(Val), Qs0}
+		end,
+
+	#'ListBucketResult'{'Contents' = L} =
+		riaks2c_object:expect_list(Pid, riaks2c_object:list(Pid, Bucket, ReqOpts#{qs => Qs1}, Opts)),
+	case L of
+		undefined ->
+			%% There is no elements in the list
+			%% so that our work is done.
+			Acc0;
+		_ ->
+			case fold_lastsize(L) of
+				{Last, MaxKeys} ->
+					#'ListEntry'{'Key' = Marker} = Last,
+					Acc1 = lists:foldl(Handle, Acc0, L),
+					Qs2 = put_qsparam(Qs1, <<"marker">>, Marker),
+					fold(Pid, Bucket, ReqOpts#{qs => Qs2}, Opts, Acc1, Handle);
+				_X ->
+					%% There is less elements then requested in the list
+					%% so that our work is done.
+					lists:foldl(Handle, Acc0, L)
+			end
+	end.
 
 -spec list(pid(), iodata(), riaks2c:options()) -> reference().
 list(Pid, Bucket, Opts) ->
@@ -239,3 +280,25 @@ await_remove(Pid, Ref, Timeout) ->
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
 		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
 	end).
+
+%% =============================================================================
+%% Internal functions
+%% =============================================================================
+
+-spec fold_lastsize(list()) -> {any(), non_neg_integer()}.
+fold_lastsize(L) ->
+	fold_lastsize(L, undefined, 0).
+
+-spec fold_lastsize(list(), any(), non_neg_integer()) -> {any(), non_neg_integer()}.
+fold_lastsize([Val|T], _Alast, Asize) -> fold_lastsize(T, Val, Asize +1);
+fold_lastsize([], Alast, Asize)       -> {Alast, Asize}.
+
+-spec put_qsparam(list(), binary(), binary()) -> list().
+put_qsparam(Qs, Pkey, Pval) ->
+	put_qsparam(Qs, Pkey, Pval, error, []).
+
+-spec put_qsparam(list(), binary(), binary(), ok | error, list()) -> list().
+put_qsparam([{Pkey, _Val}|T], Pkey, Pval, _Result, Acc) -> put_qsparam(T, Pkey, Pval, ok, [{Pkey, Pval}|Acc]);
+put_qsparam([P|T], Pkey, Pval, Result, Acc)             -> put_qsparam(T, Pkey, Pval, Result, [P|Acc]);
+put_qsparam([], Pkey, Pval, error, Acc)                 -> [{Pkey, Pval}|Acc];
+put_qsparam([], _Pkey, _Pval, ok, Acc)                  -> Acc.
