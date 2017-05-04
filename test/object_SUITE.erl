@@ -214,7 +214,7 @@ object_list_qs(Config) ->
 	Bgroup = [[<<"group_b_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 3)],
 	Cgroup = [[<<"group_c_">>, riaks2c_cth:make_key()] || _ <- lists:seq(1, 4)],
 	Keys = Agroup ++ Bgroup ++ Cgroup,
-	Alast = iolist_to_binary(lists:last(Agroup)),
+	Alast = iolist_to_binary(lists:last(lists:sort(Agroup))),
 	Tests =
 		[	{12, []},
 			{2, [{<<"max-keys">>, <<"2">>}]},
