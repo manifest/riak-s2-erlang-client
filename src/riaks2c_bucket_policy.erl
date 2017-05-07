@@ -91,7 +91,7 @@ put(Pid, Bucket, Policy, Opts) ->
 put(Pid, Bucket, Policy, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Val = jsx:encode(Policy),
-	Headers = [{<<"content-type">>, <<"application/json">>}, maps:get(headers, ReqOpts, [])],
+	Headers = [{<<"content-type">>, <<"application/json">>} | maps:get(headers, ReqOpts, [])],
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?policy">>, Bucket, Val, Headers).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.

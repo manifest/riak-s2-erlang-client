@@ -85,7 +85,7 @@ put(Pid, Bucket, ACL, Opts) ->
 put(Pid, Bucket, ACL, ReqOpts, Opts) ->
 	#{id := Id, secret := Secret, host := Host} = Opts,
 	Val = riaks2c_xsd:write(ACL),
-	Headers = [{<<"content-type">>, <<"application/xml">>}, maps:get(headers, ReqOpts, [])],
+	Headers = [{<<"content-type">>, <<"application/xml">>} | maps:get(headers, ReqOpts, [])],
 	riaks2c_http:put(Pid, Id, Secret, Host, <<"/?acl">>, Bucket, Val, Headers).
 
 -spec await_put(pid(), reference()) -> ok | {error, any()}.
