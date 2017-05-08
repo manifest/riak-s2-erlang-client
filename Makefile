@@ -1,15 +1,21 @@
 PROJECT = riaks2c
 PROJECT_DESCRIPTION = Riak S2 Client
-PROJECT_VERSION = 0.1.0
 
 DEPS = \
 	erlsom \
 	jsx \
 	gun
 
+BUILD_DEPS = \
+	version.mk
+
+DEP_PLUGINS = \
+	version.mk
+
 dep_erlsom = git git://github.com/willemdj/erlsom.git ba84a5767fe6852af2b691fc0e234702d336d65f
 dep_jsx = git git://github.com/talentdeficit/jsx.git v2.8.2
 dep_gun = git git://github.com/manifest/gun.git feature/head-1xx
+dep_version.mk = git git://github.com/manifest/version.mk.git master
 
 TEST_DEPS = ct_helper
 dep_ct_helper = git git://github.com/ninenines/ct_helper.git master
