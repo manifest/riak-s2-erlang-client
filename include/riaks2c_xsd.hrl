@@ -7,17 +7,23 @@
 %% only be used when *writing* an xml document.
 
 
+-ifndef(ERLSOM_ANY_ATTRIB_TYPES).
+-define(ERLSOM_ANY_ATTRIB_TYPES, true).
 -type anyAttrib()  :: {{binary(),    %% name of the attribute
                         binary()},   %% namespace
                        binary()}.    %% value
 
 -type anyAttribs() :: [anyAttrib()] | undefined.
+-endif.
 
+-ifndef(ERLSOM_QNAME_TYPES).
+-define(ERLSOM_QNAME_TYPES, true).
 %% xsd:QName values are translated to #qname{} records.
 -record(qname, {uri :: binary(),
                 localPart :: binary(),
                 prefix :: binary(),
                 mappedPrefix :: binary()}).
+-endif.
 
 
 

@@ -7,9 +7,9 @@ DEPS = \
 	jsx \
 	gun
 
-dep_erlsom = git git://github.com/willemdj/erlsom.git 833fa057d199e0c9dc0232d560d2f742c57476b0
-dep_jsx = git git://github.com/talentdeficit/jsx.git v2.8.0
-dep_gun = git git://github.com/manifest/gun.git feature/reply-to
+dep_erlsom = git git://github.com/willemdj/erlsom.git ba84a5767fe6852af2b691fc0e234702d336d65f
+dep_jsx = git git://github.com/talentdeficit/jsx.git v2.8.2
+dep_gun = git git://github.com/manifest/gun.git feature/head-1xx
 
 TEST_DEPS = ct_helper
 dep_ct_helper = git git://github.com/ninenines/ct_helper.git master
