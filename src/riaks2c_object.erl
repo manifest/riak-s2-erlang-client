@@ -148,15 +148,19 @@ expect_head(Pid, Ref, Timeout) ->
 
 -spec expect_head(pid(), reference(), non_neg_integer(), reference()) -> {riaks2c_http:status(), riaks2c_http:headers()}.
 expect_head(Pid, Ref, Timeout, Mref) ->
-	riaks2c_http:await_head(
+	riaks2c_http:fold_head(
 		Pid, Ref, Timeout, Mref,
+		undefined,
 		fun
-			(nofin, Status, Headers) ->
+			(inform, _IsFin, Status, Headers, _Acc) ->
+				%% Ignore informational status codes. The tuple just makes dializer happy. 
+				{Status, Headers};
+			(response, nofin, Status, Headers, _Acc) ->
 				%% Assuming we're using this function with riaks2c_object:get/{4,5},
 				%% and riaks2c_object:expect_body/{2,3,4} will be called
 				%% to flush stream messages and demonitor the stream process.
 				{Status, Headers};
-			(fin, Status, Headers) ->
+			(response, fin, Status, Headers, _Acc) ->
 				demonitor(Mref, [flush]),
 				gun:flush(Ref),
 				{Status, Headers}

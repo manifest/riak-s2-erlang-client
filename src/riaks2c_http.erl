@@ -40,7 +40,7 @@
 	delete/9,
 	await/4,
 	await/5,
-	await_head/5,
+	fold_head/6,
 	await_body/4,
 	fold_body/6,
 	amz_headers/1,
@@ -62,7 +62,7 @@
 -type headers()          :: [{binary(), iodata()}].
 -type status()           :: 100..999.
 -type fin()              :: fin | nofin.
--type head_handler()     :: fun((fin(), status(), headers()) -> any()).
+-type head_handler()     :: fun((inform | response, fin(), status(), headers(), any()) -> any()).
 -type body_handler()     :: fun((binary(), fin(), any()) -> any()).
 -type response_handler() :: fun((status(), headers(), iodata()) -> iodata()).
 -type request_options()  :: map().
@@ -124,13 +124,14 @@ await(Pid, Ref, Timeout, Handle) ->
 
 -spec await(pid(), reference(), non_neg_integer(), reference(), response_handler()) -> any().
 await(Pid, Ref, Timeout, Mref, Handle) ->
-	await_head(
+	fold_head(
 		Pid, Ref, Timeout, Mref,
+		undefined,
 		fun
-			(nofin, Status, Headers) ->
+			(_Type, nofin, Status, Headers, _Acc) ->
 				Data = await_body(Pid, Ref, Timeout, Mref),
 				Handle(Status, Headers, Data);
-			(fin, Status, Headers) ->
+			(_Type, fin, Status, Headers, _Acc) ->
 				demonitor(Mref, [flush]),
 				gun:flush(Ref),
 				Handle(Status, Headers, <<>>)
@@ -139,11 +140,13 @@ await(Pid, Ref, Timeout, Mref, Handle) ->
 %% Be careful, you must always flush stream messages and demonitor the stream proccess
 %% in the 'Handle :: head_handler()' function. The function must not fail.
 %% See riaks2c_http:await/5 as an example.
--spec await_head(pid(), reference(), non_neg_integer(), reference(), head_handler()) -> any().
-await_head(Pid, Ref, Timeout, Mref, Handle) ->
+-spec fold_head(pid(), reference(), non_neg_integer(), reference(), any(), head_handler()) -> any().
+fold_head(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 	receive
+		{gun_inform, Pid, Ref, Status, Headers} ->
+			fold_head(Pid, Ref, Timeout, Mref, Handle(inform, nofin, Status, Headers, Acc), Handle);
 		{gun_response, Pid, Ref, IsFin, Status, Headers} ->
-			Handle(IsFin, Status, Headers);
+			Handle(response, IsFin, Status, Headers, Acc);
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
 			gun:flush(Ref),
