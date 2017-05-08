@@ -27,6 +27,8 @@ SHELL_OPTS = \
 
 include erlang.mk
 
+app:: rebar.config
+
 GEN_RIAKS2_XSD = priv/schemas/riak-s2.xsd
 GEN_RIAKS2_XSD_HRL_OUT = include/riaks2c_xsd.hrl
 GEN_RIAKS2_XSD_SRC_OUT = src/riaks2c_xsd.erl
