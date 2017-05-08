@@ -63,7 +63,7 @@
 -type status()           :: 100..999.
 -type fin()              :: fin | nofin.
 -type head_handler()     :: fun((inform | response, fin(), status(), headers(), any()) -> any()).
--type body_handler()     :: fun((binary(), fin(), any()) -> any()).
+-type body_handler()     :: fun((fin(), binary(), any()) -> any()).
 -type response_handler() :: fun((status(), headers(), iodata()) -> iodata()).
 -type request_options()  :: map().
 
@@ -173,11 +173,11 @@ await_body(Pid, Ref, Timeout, Mref) ->
 fold_body(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 	receive
 		{gun_data, Pid, Ref, nofin =IsFin, Data} ->
-			fold_body(Pid, Ref, Timeout, Mref, Handle(Data, IsFin, Acc), Handle);
+			fold_body(Pid, Ref, Timeout, Mref, Handle(IsFin, Data, Acc), Handle);
 		{gun_data, Pid, Ref, fin =IsFin, Data} ->
 			demonitor(Mref, [flush]),
 			gun:flush(Ref),
-			Handle(Data, IsFin, Acc);
+			Handle(IsFin, Data, Acc);
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
 			gun:flush(Ref),
@@ -374,8 +374,8 @@ parse_resource_key(<<$/, Rest/bits>>) ->
 parse_resource_key(<<$/, Rest/bits>>, Acc) -> {Acc, Rest};
 parse_resource_key(<<C, Rest/bits>>, Acc)  -> parse_resource_key(Rest, <<Acc/binary, C>>).
 
--spec accumulate_body(binary(), fin(), binary()) -> binary().
-accumulate_body(Data, _IsFin, Acc) ->
+-spec accumulate_body(fin(), binary(), binary()) -> binary().
+accumulate_body(_IsFin, Data, Acc) ->
 	<<Acc/binary, Data/binary>>.
 
 -spec amz_headers(headers(), headers()) -> headers().
