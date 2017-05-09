@@ -38,6 +38,8 @@
 	post/8,
 	delete/7,
 	delete/9,
+	cancel/2,
+	flush/1,
 	await/4,
 	await/5,
 	fold_head/6,
@@ -47,10 +49,14 @@
 	signature_v2/5,
 	signature_v2/7,
 	access_token_v2/2,
-	throw_response_error/1,
+	throw_response_error/2,
 	throw_response_error_400/1,
 	throw_response_error_404/1,
+	throw_response_error_412/1,
+	throw_response_error_416/1,
 	return_response_error_404/1,
+	return_response_error_412/1,
+	return_response_error_416/1,
 	default_request_timeout/0
 ]).
 
@@ -117,6 +123,14 @@ delete(Pid, Id, Secret, Host, Path, Bucket, Headers) ->
 delete(Pid, Id, Secret, Host, Path, SignQs, NoSignQs, Bucket, Headers) ->
 	request(Pid, Id, Secret, <<"DELETE">>, Host, Path, SignQs, NoSignQs, Bucket, Headers).
 
+-spec cancel(pid(), reference()) -> ok.
+cancel(Pid, Ref) ->
+	gun:cancel(Pid, Ref).
+
+-spec flush(pid() | reference()) -> ok.
+flush(PidOrRef) ->
+	gun:flush(PidOrRef).
+
 -spec await(pid(), reference(), non_neg_integer(), response_handler()) -> any().
 await(Pid, Ref, Timeout, Handle) ->
 	Mref = monitor(process, Pid),
@@ -133,7 +147,7 @@ await(Pid, Ref, Timeout, Mref, Handle) ->
 				Handle(Status, Headers, Data);
 			(_Type, fin, Status, Headers, _Acc) ->
 				demonitor(Mref, [flush]),
-				gun:flush(Ref),
+				flush(Ref),
 				Handle(Status, Headers, <<>>)
 		end).
 
@@ -149,18 +163,18 @@ fold_head(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 			Handle(response, IsFin, Status, Headers, Acc);
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
-			gun:flush(Ref),
+			flush(Ref),
 			exit(Reason);
 		{gun_error, Pid, Reason} ->
 			demonitor(Mref, [flush]),
-			gun:flush(Ref),
+			flush(Ref),
 			exit(Reason);
 		{'DOWN', Mref, process, Pid, Reason} ->
-			gun:flush(Ref),
+			flush(Ref),
 			exit(Reason)
 	after Timeout ->
 		demonitor(Mref, [flush]),
-		gun:flush(Ref),
+		flush(Ref),
 		exit(timeout)
 	end.
 
@@ -176,22 +190,22 @@ fold_body(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 			fold_body(Pid, Ref, Timeout, Mref, Handle(IsFin, Data, Acc), Handle);
 		{gun_data, Pid, Ref, fin =IsFin, Data} ->
 			demonitor(Mref, [flush]),
-			gun:flush(Ref),
+			flush(Ref),
 			Handle(IsFin, Data, Acc);
 		{gun_error, Pid, Ref, Reason} ->
 			demonitor(Mref, [flush]),
-			gun:flush(Ref),
+			flush(Ref),
 			exit(Reason);
 		{gun_error, Pid, Reason} ->
 			demonitor(Mref, [flush]),
-			gun:flush(Ref),
+			flush(Ref),
 			exit(Reason);
 		{'DOWN', Mref, process, Pid, Reason} ->
-			gun:flush(Ref),
+			flush(Ref),
 			exit(Reason)
 	after Timeout ->
 		demonitor(Mref, [flush]),
-		gun:flush(Ref),
+		flush(Ref),
 		exit(timeout)
 	end.
 
@@ -218,42 +232,87 @@ signature_v2(Secret, Method, Resource, ContentMD5, ContentType, Date, AmzHeaders
 access_token_v2(Id, Sign) ->
 	[<<"AWS ">>, Id, <<$:>>, Sign].
 
--spec throw_response_error(iodata()) -> no_return().
-throw_response_error(Xml) ->
-	exit(riaks2c_xsd:scan(Xml)).
+-spec throw_response_error(status(), iodata()) -> no_return().
+throw_response_error(Status, Xml) ->
+	exit({unsupported_response_error, {Status, try riaks2c_xsd:scan(Xml) catch _:_ -> Xml end}}).
 
 -spec throw_response_error_400(iodata()) -> no_return().
+throw_response_error_400(<<>>) ->
+	error({missing_response_body, 400});
 throw_response_error_400(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	{Bucket, Key} = parse_resource_key(R), 
 	case Code of
 		<<"EntityTooSmall">>   -> error({multipart_invalid_part_size, Bucket, Key});
 		<<"InvalidPart">>      -> error({multipart_invalid_part, Bucket, Key});
-		<<"InvalidPartOrder">> -> error({multipart_invalid_part_order, Bucket, Key})
+		<<"InvalidPartOrder">> -> error({multipart_invalid_part_order, Bucket, Key});
+		_                      -> error({unsupported_response_error_code, Code})
 	end.
 
 -spec throw_response_error_404(iodata()) -> no_return().
 throw_response_error_404(<<>>) ->
-	error(unknown);
+	error({missing_response_body, 404});
 throw_response_error_404(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
 		<<"NoSuchKey">>          -> {Bucket, Key} = parse_resource_key(R), error({bad_key, Bucket, Key});
 		<<"NoSuchBucket">>       -> error({bad_bucket, parse_resource_bucket(R)});
 		<<"NoSuchBucketPolicy">> -> error({bad_bucket_policy, parse_resource_bucket(R)});
-		<<"NoSuchUpload">>       -> error(bad_upload_key)
+		<<"NoSuchUpload">>       -> error(bad_upload_key);
+		_                        -> error({unsupported_response_error_code, Code})
+	end.
+
+-spec throw_response_error_412(iodata()) -> no_return().
+throw_response_error_412(<<>>) ->
+	error({missing_response_body, 412});
+throw_response_error_412(Xml) ->
+	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"PreconditionFailed">> -> {Bucket, Key} = parse_resource_key(R), error({bad_precondition, Bucket, Key});
+		_                        -> error({unsupported_response_error_code, Code})
+	end.
+
+-spec throw_response_error_416(iodata()) -> no_return().
+throw_response_error_416(<<>>) ->
+	error({missing_response_body, 416});
+throw_response_error_416(Xml) ->
+	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"InvalidRange">> -> {Bucket, Key} = parse_resource_key(R), error({bad_range, Bucket, Key});
+		_                  -> error({unsupported_response_error_code, Code})
 	end.
 
 -spec return_response_error_404(iodata()) -> {error, any()}.
 return_response_error_404(<<>>) ->
-	{error, unknown};
+	{error, {missing_response_body, 404}};
 return_response_error_404(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
 		<<"NoSuchKey">>          -> {Bucket, Key} = parse_resource_key(R), {error, {bad_key, Bucket, Key}};
 		<<"NoSuchBucket">>       -> {error, {bad_bucket, parse_resource_bucket(R)}};
 		<<"NoSuchBucketPolicy">> -> {error, {bad_bucket_policy, parse_resource_bucket(R)}};
-		<<"NoSuchUpload">>       -> {error, bad_upload_key}
+		<<"NoSuchUpload">>       -> {error, bad_upload_key};
+		_                        -> error({unsupported_response_error_code, Code})
+	end.
+
+-spec return_response_error_412(iodata()) -> {error, any()}.
+return_response_error_412(<<>>) ->
+	{error, {missing_response_body, 412}};
+return_response_error_412(Xml) ->
+	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"PreconditionFailed">> -> {Bucket, Key} = parse_resource_key(R), {error, {bad_precondition, Bucket, Key}};
+		_                        -> error({unsupported_response_error_code, Code})
+	end.
+
+-spec return_response_error_416(iodata()) -> {error, any()}.
+return_response_error_416(<<>>) ->
+	{error, {missing_response_body, 416}};
+return_response_error_416(Xml) ->
+	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
+	case Code of
+		<<"InvalidRange">> -> {Bucket, Key} = parse_resource_key(R), {error, {bad_range, Bucket, Key}};
+		_                  -> error({unsupported_response_error_code, Code})
 	end.
 
 -spec default_request_timeout() -> non_neg_integer().

@@ -74,7 +74,7 @@ expect_init(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec complete(pid(), iodata(), iodata(), iodata(), [{non_neg_integer(), iodata()}], riaks2c:options()) -> reference().
@@ -91,7 +91,7 @@ expect_complete(Pid, Ref, Timeout) ->
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(400, _Hs, Xml) -> riaks2c_http:throw_response_error_400(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec complete(pid(), iodata(), iodata(), iodata(), [{non_neg_integer(), iodata()}], riaks2c_http:request_options(), riaks2c:options()) -> reference().
@@ -124,7 +124,7 @@ expect_cancel(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec list(pid(), iodata(), riaks2c:options()) -> reference().
@@ -148,7 +148,7 @@ expect_list(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec put(pid(), iodata(), iodata(), iodata(), iodata(), non_neg_integer(), riaks2c:options()) -> reference().
@@ -171,7 +171,7 @@ await_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, Hs, _No)  -> {_, Etag} = lists:keyfind(<<"etag">>, 1, Hs), {ok, parse_etag(Etag)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec expect_put(pid(), reference()) -> iodata().
@@ -183,7 +183,7 @@ expect_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, Hs, _No)  -> {_, Etag} = lists:keyfind(<<"etag">>, 1, Hs), parse_etag(Etag);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 %% =============================================================================

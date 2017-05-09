@@ -62,7 +62,7 @@ await_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec expect_get(pid(), reference()) -> 'AccessControlPolicy'().
@@ -74,7 +74,7 @@ expect_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
 		(404, _Hs, Xml) -> riaks2c_http:throw_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec put(pid(), iodata(), iodata(), 'AccessControlPolicy'(), riaks2c:options()) -> reference().
@@ -97,5 +97,5 @@ await_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).

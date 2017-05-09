@@ -204,7 +204,7 @@ object_range_request_error(Config) ->
 	Key = ?config(key, Config),
 
 	ReqOpts = #{headers => [{<<"range">>, <<"invalid">>}]},
-	{error, bad_range} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts)).
+	{error, {bad_range, _, _}} = riaks2c_object:await_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts)).
 
 object_list_qs(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),

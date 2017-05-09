@@ -63,7 +63,7 @@ expect_list(Pid, Ref) ->
 expect_list(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, Xml) -> riaks2c_xsd:scan(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec put(pid(), iodata(), riaks2c:options()) -> reference().
@@ -84,7 +84,7 @@ await_put(Pid, Ref) ->
 await_put(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(200, _Hs, _Xml) -> ok;
-		(_St, _Hs, Xml)  -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml)  -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec remove(pid(), iodata(), riaks2c:options()) -> reference().
@@ -106,5 +106,5 @@ await_remove(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
 		(204, _Hs, _No) -> ok;
 		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
-		(_St, _Hs, Xml) -> riaks2c_http:throw_response_error(Xml)
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
 	end).
