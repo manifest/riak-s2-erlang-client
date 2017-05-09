@@ -237,8 +237,6 @@ throw_response_error(Status, Xml) ->
 	exit({unsupported_response_error, {Status, try riaks2c_xsd:scan(Xml) catch _:_ -> Xml end}}).
 
 -spec throw_response_error_400(iodata()) -> no_return().
-throw_response_error_400(<<>>) ->
-	error({missing_response_body, 400});
 throw_response_error_400(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	{Bucket, Key} = parse_resource_key(R), 
@@ -250,8 +248,6 @@ throw_response_error_400(Xml) ->
 	end.
 
 -spec throw_response_error_404(iodata()) -> no_return().
-throw_response_error_404(<<>>) ->
-	error({missing_response_body, 404});
 throw_response_error_404(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -263,8 +259,6 @@ throw_response_error_404(Xml) ->
 	end.
 
 -spec throw_response_error_412(iodata()) -> no_return().
-throw_response_error_412(<<>>) ->
-	error({missing_response_body, 412});
 throw_response_error_412(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -273,8 +267,6 @@ throw_response_error_412(Xml) ->
 	end.
 
 -spec throw_response_error_416(iodata()) -> no_return().
-throw_response_error_416(<<>>) ->
-	error({missing_response_body, 416});
 throw_response_error_416(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -283,8 +275,6 @@ throw_response_error_416(Xml) ->
 	end.
 
 -spec return_response_error_404(iodata()) -> {error, any()}.
-return_response_error_404(<<>>) ->
-	{error, {missing_response_body, 404}};
 return_response_error_404(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -296,8 +286,6 @@ return_response_error_404(Xml) ->
 	end.
 
 -spec return_response_error_412(iodata()) -> {error, any()}.
-return_response_error_412(<<>>) ->
-	{error, {missing_response_body, 412}};
 return_response_error_412(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
@@ -306,8 +294,6 @@ return_response_error_412(Xml) ->
 	end.
 
 -spec return_response_error_416(iodata()) -> {error, any()}.
-return_response_error_416(<<>>) ->
-	{error, {missing_response_body, 416}};
 return_response_error_416(Xml) ->
 	#'Error'{'Code' = Code, 'Resource' = R} = riaks2c_xsd:scan(Xml),
 	case Code of
