@@ -31,6 +31,8 @@
 	fold/6,
 	list/3,
 	list/4,
+	await_list/2,
+	await_list/3,
 	expect_list/2,
 	expect_list/3,
 	head/4,
@@ -114,6 +116,18 @@ list(Pid, Bucket, ReqOpts, Opts) ->
 	NoSignQs = maps:get(qs, ReqOpts, []),
 	Headers = maps:get(headers, ReqOpts, []),
 	riaks2c_http:get(Pid, Id, Secret, Host, <<$/>>, [], NoSignQs, Bucket, Headers).
+
+-spec await_list(pid(), reference()) -> {ok, 'ListBucketResult'()} | {error, any()}.
+await_list(Pid, Ref) ->
+	await_list(Pid, Ref, riaks2c_http:default_request_timeout()).
+
+-spec await_list(pid(), reference(), non_neg_integer()) -> {ok, 'ListBucketResult'()} | {error, any()}.
+await_list(Pid, Ref, Timeout) ->
+	riaks2c_http:await(Pid, Ref, Timeout, fun
+		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
+		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
+		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
+	end).
 
 -spec expect_list(pid(), reference()) -> 'ListBucketResult'().
 expect_list(Pid, Ref) ->
