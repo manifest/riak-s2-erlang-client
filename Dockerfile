@@ -95,7 +95,9 @@ RUN set -xe \
 	&& echo "\
 		[\n\
 			{riak_cs, [\n\
-				{max_buckets_per_user, 1000000}\n\
+				{max_buckets_per_user, 1000000},\n\
+				{request_pool, {1024, 0}},\n\
+				{bucket_list_pool, {10, 0}}\n\
 			]}\n\
 		].\n\
 	" > /etc/riak-cs/advanced.config \
