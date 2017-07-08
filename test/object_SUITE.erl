@@ -101,7 +101,7 @@ object_put(Config) ->
 	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
 	{200, Hs} = riaks2c_object:expect_head(Pid, Ref),
 	{_, CT} = lists:keyfind(<<"content-type">>, 1, Hs),
-	Val = riaks2c_object:expect_body(Pid, Ref),
+	Val = iolist_to_binary(riaks2c_object:expect_body(Pid, Ref)),
 	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)).
 
 object_put_data(Config) ->
@@ -122,7 +122,7 @@ object_put_data(Config) ->
 	Ref = riaks2c_object:get(Pid, Bucket, Key, Opts),
 	{200, Hs} = riaks2c_object:expect_head(Pid, Ref),
 	{_, CT} = lists:keyfind(<<"content-type">>, 1, Hs),
-	<<"123">> = riaks2c_object:expect_body(Pid, Ref),
+	<<"123">> = iolist_to_binary(riaks2c_object:expect_body(Pid, Ref)),
 	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)).
 
 object_fold(Config) ->
@@ -195,7 +195,7 @@ object_range_request(Config) ->
 	Key = ?config(key, Config),
 
 	ReqOpts = #{headers => [{<<"range">>, <<"bytes=0-1">>}]},
-	2 = byte_size(riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))).
+	2 = iolist_size(riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, Bucket, Key, ReqOpts, Opts))).
 
 object_range_request_error(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),

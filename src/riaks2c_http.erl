@@ -142,10 +142,13 @@ await(Pid, Ref, Timeout, Mref, Handle) ->
 		Pid, Ref, Timeout, Mref,
 		undefined,
 		fun
-			(_Type, nofin, Status, Headers, _Acc) ->
+			(inform, nofin, _Status, _Headers, Acc) ->
+				%% Ignore informational status codes.
+				Acc;
+			(response, nofin, Status, Headers, _Acc) ->
 				Data = await_body(Pid, Ref, Timeout, Mref),
 				Handle(Status, Headers, Data);
-			(_Type, fin, Status, Headers, _Acc) ->
+			(response, fin, Status, Headers, _Acc) ->
 				demonitor(Mref, [flush]),
 				flush(Ref),
 				Handle(Status, Headers, <<>>)
@@ -174,13 +177,14 @@ fold_head(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 			exit(Reason)
 	after Timeout ->
 		demonitor(Mref, [flush]),
+		%% NOTE: we don't cancel the stream because its state is uncertain
 		flush(Ref),
 		exit(timeout)
 	end.
 
 -spec await_body(pid(), reference(), non_neg_integer(), reference()) -> iodata().
 await_body(Pid, Ref, Timeout, Mref) ->
-	fold_body(Pid, Ref, Timeout, Mref, <<>>, fun accumulate_body/3).
+	fold_body(Pid, Ref, Timeout, Mref, [], fun accumulate_body/3).
 
 %% Be careful, 'Handle :: body_handler()' function must not fail.
 -spec fold_body(pid(), reference(), non_neg_integer(), reference(), any(), body_handler()) -> any().
@@ -205,6 +209,7 @@ fold_body(Pid, Ref, Timeout, Mref, Acc, Handle) ->
 			exit(Reason)
 	after Timeout ->
 		demonitor(Mref, [flush]),
+		%% NOTE: we don't cancel the stream because its state is uncertain
 		flush(Ref),
 		exit(timeout)
 	end.
@@ -419,9 +424,9 @@ parse_resource_key(<<$/, Rest/bits>>) ->
 parse_resource_key(<<$/, Rest/bits>>, Acc) -> {Acc, Rest};
 parse_resource_key(<<C, Rest/bits>>, Acc)  -> parse_resource_key(Rest, <<Acc/binary, C>>).
 
--spec accumulate_body(fin(), binary(), binary()) -> binary().
-accumulate_body(_IsFin, Data, Acc) ->
-	<<Acc/binary, Data/binary>>.
+-spec accumulate_body(fin(), iodata(), iodata()) -> iodata().
+accumulate_body(nofin, Data, Acc) -> [Data|Acc];
+accumulate_body(fin, Data, Acc)   -> lists:reverse([Data|Acc]).
 
 -spec amz_headers(headers(), headers()) -> headers().
 amz_headers([{<<"x-amz-", _/bits>> =Key, Val}|T], L) -> amz_headers(T, ordsets:add_element([Key, <<$:>>, Val, <<$\n>>], L));

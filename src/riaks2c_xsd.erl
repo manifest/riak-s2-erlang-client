@@ -3,7 +3,7 @@
 -export([scan/1,write/1,model/0]).
 
 scan(Xml) ->
-case erlsom:scan(Xml, model(), [{output_encoding, utf8}]) of {ok, Val, _} -> Val; {error, Reason} -> exit({bad_xml, Reason}) end.
+case erlsom:scan(iolist_to_binary(Xml), model(), [{output_encoding, utf8}]) of {ok, Val, _} -> Val; {error, Reason} -> exit({bad_xml, Reason}) end.
 
 write(Struct) ->
 case erlsom:write(Struct, model(), [{output, binary}]) of {ok, Xml} -> Xml; {error, Reason} -> exit({bad_xml_struct, Reason}) end.

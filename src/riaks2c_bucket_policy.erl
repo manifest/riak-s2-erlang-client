@@ -63,9 +63,9 @@ await_get(Pid, Ref) ->
 -spec await_get(pid(), reference(), non_neg_integer()) -> {ok, map()} | {error, any()}.
 await_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
-		(200, _Hs, Xml) -> {ok, riaks2c_xsd:scan(Xml)};
-		(404, _Hs, Xml) -> riaks2c_http:return_response_error_404(Xml);
-		( St, _Hs, Xml) -> riaks2c_http:throw_response_error(St, Xml)
+		(200, _Hs, Json) -> {ok, jsx:decode(iolist_to_binary(Json), [return_maps])};
+		(404, _Hs, Xml)  -> riaks2c_http:return_response_error_404(Xml);
+		( St, _Hs, Xml)  -> riaks2c_http:throw_response_error(St, Xml)
 	end).
 
 -spec expect_get(pid(), reference()) -> map().
@@ -75,7 +75,7 @@ expect_get(Pid, Ref) ->
 -spec expect_get(pid(), reference(), non_neg_integer()) -> map().
 expect_get(Pid, Ref, Timeout) ->
 	riaks2c_http:await(Pid, Ref, Timeout, fun
-		(200, _Hs, Json) -> jsx:decode(Json, [return_maps]);
+		(200, _Hs, Json) -> jsx:decode(iolist_to_binary(Json), [return_maps]);
 		(404, _Hs, Xml)  -> riaks2c_http:throw_response_error_404(Xml);
 		( St, _Hs, Xml)  -> riaks2c_http:throw_response_error(St, Xml)
 	end).
