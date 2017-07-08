@@ -43,7 +43,7 @@ Here basic operations that you can perform. Refer to documentation to get to kno
 riaks2c_bucket:await_put(Pid, riaks2c_bucket:put(Pid, <<"test-bucket">>, Opts)),
 riaks2c_object:await_put(Pid, riaks2c_object:put(Pid, <<"test-bucket">>, <<"test_file">>, <<42>>, Opts)),
 riaks2c_object:expect_get(Pid, riaks2c_object:get(Pid, <<"test-bucket">>, <<"test_file">>, Opts)).
-%% <<42>>
+%% [<<42>>]
 
 %% Listing buckets
 riaks2c_bucket:expect_list(Pid, riaks2c_bucket:list(Pid, Opts)).
