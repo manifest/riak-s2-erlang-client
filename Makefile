@@ -2,6 +2,7 @@ PROJECT = riaks2c
 PROJECT_DESCRIPTION = Riak S2 Client
 
 DEPS = \
+	cowlib \
 	erlsom \
 	jsx \
 	gun
@@ -12,6 +13,7 @@ BUILD_DEPS = \
 DEP_PLUGINS = \
 	version.mk
 
+dep_cowlib = git git://github.com/ninenines/cowlib.git 2.2.1
 dep_erlsom = git git://github.com/willemdj/erlsom.git ba84a5767fe6852af2b691fc0e234702d336d65f
 dep_jsx = git git://github.com/talentdeficit/jsx.git v2.8.2
 dep_gun = git git://github.com/manifest/gun.git feature/head-1xx

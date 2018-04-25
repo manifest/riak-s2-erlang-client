@@ -27,6 +27,7 @@
 
 %% API
 -export([
+	signed_uri/7,
 	head/5,
 	head/7,
 	get/5,
@@ -78,6 +79,21 @@
 %% =============================================================================
 %% API
 %% =============================================================================
+
+-spec signed_uri(iodata(), iodata(), binary(), iodata(), iodata(), non_neg_integer(), headers()) -> iodata().
+signed_uri(Id, Secret, Method, Path, Bucket, Expires0, Headers) ->
+	Expires1 = integer_to_binary(Expires0),
+	Sign =
+		case content_headers(Headers) of
+			{AmzHeaders, {ok, CT}, _MaybeCL, {ok, CS}} -> signature_qs_v2(Secret, Method, [<<$/>>, Bucket, Path], CS, CT, Expires1, amz_headers(AmzHeaders));
+			{AmzHeaders, {ok, CT}, _MaybeCL, error}    -> signature_qs_v2(Secret, Method, [<<$/>>, Bucket, Path], <<>>, CT, Expires1, amz_headers(AmzHeaders));
+			{AmzHeaders, error, _MaybeCL, _MAybeCS}    -> signature_qs_v2(Secret, Method, [<<$/>>, Bucket, Path], Expires1, amz_headers(AmzHeaders))
+		end,
+
+	[	<<$/>>, Bucket, Path,
+		<<$?>>, <<"AWSAccessKeyId=">>, Id,
+		<<$&>>, <<"Expires=">>, Expires1,
+		<<$&>>, <<"Signature=">>, Sign ].
 
 -spec head(pid(), iodata(), iodata(), iodata(), headers()) -> reference().
 head(Pid, Id, Secret, Path, Headers) ->
@@ -232,6 +248,21 @@ signature_v2(Secret, Method, Resource, ContentMD5, ContentType, Date, AmzHeaders
 			AmzHeaders,
 			Resource ],
 	base64:encode(crypto:hmac(sha, Secret, Input)).
+
+-spec signature_qs_v2(iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
+signature_qs_v2(Secret, Method, Resource, Expires, Headers) ->
+	signature_qs_v2(Secret, Method, Resource, <<>>, <<>>, Expires, Headers).
+
+-spec signature_qs_v2(iodata(), iodata(), iodata(), iodata(), iodata(), iodata(), headers()) -> iodata().
+signature_qs_v2(Secret, Method, Resource, ContentMD5, ContentType, Expires, AmzHeaders) ->
+	Input =
+		[	Method, <<$\n>>,
+			ContentMD5, <<$\n>>,
+			ContentType, <<$\n>>,
+			Expires, <<$\n>>,
+			AmzHeaders,
+			Resource ],
+	cow_qs:urlencode(base64:encode(crypto:hmac(sha, Secret, Input))).
 
 -spec access_token_v2(iodata(), iodata()) -> iodata().
 access_token_v2(Id, Sign) ->

@@ -88,6 +88,36 @@ end_per_suite(Config) ->
 %% Tests
 %% =============================================================================
 
+signed_uri_roundtrip(Config) ->
+	Pid = riaks2c_cth:gun_open(Config),
+	Opts = ?config(s2_user, Config),
+	Bucket = ?config(bucket, Config),
+	Key = riaks2c_cth:make_key(),
+	Payload = <<"foobar">>,
+
+	%% Uploading content using signed URI
+	Expires = 32503680000,
+	UploadHeaders = [{<<"content-length">>, <<"6">>}, {<<"content-type">>, <<"text/plain">>}],
+	UploadURI =
+		riaks2c_object:signed_uri(
+			Bucket, Key, <<"PUT">>, Expires,
+			#{headers => UploadHeaders},
+			Opts),
+	UploadRef = gun:request(Pid, <<"PUT">>, UploadURI, UploadHeaders, Payload),
+	{response, fin, 200, _UploadHs} = gun:await(Pid, UploadRef),
+	
+	%% Downloading content using signed URI
+	DownloadURI =
+		riaks2c_object:signed_uri(
+			Bucket, Key, <<"GET">>, Expires,
+			Opts),
+	DownloadRef = gun:request(Pid, <<"GET">>, DownloadURI, []),
+	{response, nofin, 200, _DownloadHs} = gun:await(Pid, DownloadRef),
+	{ok, Payload} = gun:await_body(Pid, DownloadRef),
+
+	%% Cleaning up
+	ok = riaks2c_object:await_remove(Pid, riaks2c_object:remove(Pid, Bucket, Key, Opts)).
+
 object_put(Config) ->
 	Pid = riaks2c_cth:gun_open(Config),
 	Opts = ?config(s2_user, Config),

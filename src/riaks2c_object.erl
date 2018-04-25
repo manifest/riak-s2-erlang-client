@@ -27,6 +27,8 @@
 
 %% API
 -export([
+	signed_uri/5,
+	signed_uri/6,
 	fold/5,
 	fold/6,
 	list/3,
@@ -71,6 +73,16 @@
 %% =============================================================================
 %% API
 %% =============================================================================
+
+-spec signed_uri(iodata(), iodata(), binary(), non_neg_integer(), riaks2c:options()) -> iodata().
+signed_uri(Bucket, Key, Method, Expires, Opts) ->
+	signed_uri(Bucket, Key, Method, Expires, #{}, Opts).
+
+-spec signed_uri(iodata(), iodata(), binary(), non_neg_integer(), riaks2c_http:request_options(), riaks2c:options()) -> iodata().
+signed_uri(Bucket, Key, Method, Expires, ReqOpts, Opts) ->
+	#{id := Id, secret := Secret} = Opts,
+	Headers = maps:get(headers, ReqOpts, []),
+	riaks2c_http:signed_uri(Id, Secret, Method, [<<$/>>, Key], Bucket, Expires, Headers).
 
 -spec fold(pid(), iodata(), riaks2c:options(), any(), fold_handler()) -> reference().
 fold(Pid, Bucket, Opts, Acc, Handle) ->
